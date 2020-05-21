@@ -2,8 +2,9 @@
 # Tested on   : Python 3.7.4
 # Author      : Emiko Soroka
 # Unittests   : None
-# Description:
+# Description :
 # Quick hack to ingest JSON data and spit out CSV files, will extend later
+# How to use  : Run file. Enter input JSON file when prompted and output CSV file name when prompted.
 
 import json
 
