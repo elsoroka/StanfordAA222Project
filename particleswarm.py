@@ -53,6 +53,7 @@ class ParticleSwarm:
 
 
 if __name__ == "__main__":
+	print("Self-test on Wheeler's Ridge: f* = 0, x* = [1.0, 1.5]")
 	# test on a small objective function
 	# the global optimum is 0 at [1, 3/2]
 	def wheelers_ridge(x, a = 1.5):
@@ -64,7 +65,7 @@ if __name__ == "__main__":
 	init_population = [Particle(x=x, v=np.ones(n), x_best=x) for x in init_x]
 
 	ps = ParticleSwarm(wheelers_ridge, init_population)
-	final_population = ps.run(20);
+	final_population = ps.run(20); # Number of iterations
 	best_f = np.Inf
 	best_x = np.ones(n)*np.Inf
 	for p in final_population:
