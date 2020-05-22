@@ -6,7 +6,7 @@
 # Course scheduling problem implementation
 
 import numpy as np
-
+import typing, csv
 # We have two types of timeslots: hour and 1.5-hour.
 # A course consists of one or more indices [i:j] into this schedule
 
@@ -55,7 +55,7 @@ class Course:
 	# Initialize a course "randomly" within constraints
 	# Guaranteed to produce a feasible sample
 	@staticmethod
-	def init_random(name, courseType, meetingLength, nMeetings):
+	def init_random(meetingLength, nMeetings, *args):
 
 		time_range  = [0,]
 		base_length = 0.0
@@ -96,7 +96,7 @@ class Course:
 		elif 3 == nMeetings:
 			d = np.array([1,0,1,0,1], dtype=int)
 
-		return Course(name, courseType, np.array([t1,t2], dtype=int), d)
+		return Course(np.array([t1,t2], dtype=int), d, *args)
 
 	# Some static data
 	TIME_NAMES = [
@@ -124,17 +124,18 @@ class Course:
 
 	# Course methods
 	# Initialize from given time/date
-	def __init__(self, name, courseType, new_t:np.array, new_d:np.array):
-		self.name = name
+	def __init__(self, new_t:np.array, new_d:np.array, courseType, numberEnrolled, coreqWith, relatesTo):
 		self.courseType = courseType
+		self.numberEnrolled = numberEnrolled
+		self.coreqWith = coreqWith
+		self.relatesTo = relatesTo
 		self.t = new_t
 		self.d = new_d
 
 	# Make print(course) output a nice human-readable string.
 	def __str__(self) ->str:
 		#print(self.d, self.t)
-		return "{} {}: {} {} - {}".format(
-			   self.name, self.courseType,
+		return "{} {} - {}".format(
 			   "".join([self.DAY_NAMES[i] for i in range(5) if self.d[i] > 0]), \
 			   self.TIME_NAMES[self.t[0]][0], self.TIME_NAMES[self.t[1]][1]   \
 			   )
@@ -157,7 +158,7 @@ class Course:
 # [0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1] # 7p 1.0 conflicts with 6p 1.5
 class Ucsp:
 
-	def __init__(schedule:[Course]):
+	def __init__(schedule:typing.Dict[str, Course]):
 		'''Initialize a new problem'''
 		self.schedule = schedule
 
@@ -169,11 +170,11 @@ class Ucsp:
 		are commonly taken together and SHOULDN'T overlap'''
 		pass
 
-	def check_feasible(schedule:[Course])->True or False:
+	def check_feasible(schedule:typing.Dict[str, Course])->True or False:
 		'''Check whether a schedule is feasible (all hard constraints met)'''
 		pass
 
-	def check_desirable(schedule:[Course])->float:
+	def check_desirable(schedule:typing.Dict[str, Course])->float:
 		'''Compute a measure of schedule goodness: count soft constraints met.'''
 		pass
 
@@ -185,21 +186,21 @@ if __name__ == "__main__":
 	print("Generate a sample (random) schedule from data:")
 	infilename = "data/spring_csv_data.csv"# input("Data file name: ")
 
-	random_schedule = []
+	random_schedule = dict()
 
-	# This is a terrible file reading hack!! DON'T USE THIS CODE.
-	# import csv to do it properly!!
 	with open(infilename, "r") as infile:
-		header = infile.readline()
-		for line in infile.readlines():
-			line = line.rstrip("\n").split(",")
-			# line has format
-			# dept, courseNumber, courseType, numberOfMeetings, meetingLengthHours, isTba, numberEnrolled, coreqWith, relatesTo,
-			courseNumber = line[1]; courseType = line[2]
-			nMeetings = int(line[3])
-			meetingLength = float(line[4])
-			random_schedule.append(Course.init_random(courseNumber, courseType, meetingLength, nMeetings))
+		# Use builtin csv reader
+		reader = csv.DictReader(infile)
+		for row in reader:
+			# Exclude TBA classes because they have no timing information
+			random_schedule[row['courseNumber']] = \
+			Course.init_random(float(row['meetingLengthHours']), 
+				               int(row['numberOfMeetings']),
+				               row['courseType'],
+				               int(row['numberEnrolled']),
+				               row['coreqWith'],
+				               row['relatesTo'])
 
-	for course in random_schedule:
-		print(course)
+	for name in random_schedule.keys():
+		print(name, random_schedule[name])
 
