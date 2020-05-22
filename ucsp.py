@@ -32,9 +32,9 @@ import numpy as np
 # and a vector r in R5 with some amount of 1's.
 
 # Examples:
-#     A 9am - 10:30am TuTh class: [i:j] = [11:12], r = [0 1 0 1 0]
-#     A 10a - 12p M lab         : [i:j] = [2:4]  , r = [1 0 0 0 0]
-#     A 3p - 4:30p MW class     : [i:j] = [15:16], r = [0 1 0 1 0]
+#     A 9am - 10:30am TuTh class: [i:j] = [11:11], r = [0 1 0 1 0]
+#     A 10a - 12p M lab         : [i:j] = [2:3]  , r = [1 0 0 0 0]
+#     A 3p - 4:30p MW class     : [i:j] = [15:15], r = [0 1 0 1 0]
 # How to perturb these class timings:
 # Add / subtract 2 to indices within range
 # Change pattern of r
@@ -54,7 +54,7 @@ class Course:
 	# Initialize a course "randomly" within constraints
 	# Guaranteed to produce a feasible sample
 	@staticmethod
-	def init_random(meetingLength, nMeetings):
+	def init_random(name, courseType, meetingLength, nMeetings):
 
 		time_range  = [0,]
 		base_length = 0.0
@@ -68,7 +68,7 @@ class Course:
 			# Pick randomly
 			idx = np.random.choice([0, 1])
 			time_range = time_ranges[idx]
-			base_length = [1.0, 1,5][idx]
+			base_length = [1.0, 1.5][idx]
 
 		# The meetingLength is only a multiple of 1.0
 		elif (0.0 == meetingLength % 1.0):
@@ -83,7 +83,7 @@ class Course:
 		# Choose the class start time randomly from the valid range
 		t1 = np.random.choice(time_range)
 		# Choose the end time using the length of the meeting
-		t2 = t1 + meetingLength/base_length
+		t2 = t1 + meetingLength/base_length - 1
 
 		# Set up the days
 		d = np.zeros(5, dtype=int)
@@ -95,7 +95,7 @@ class Course:
 		elif 3 == nMeetings:
 			d = np.array([1,0,1,0,1], dtype=int)
 
-		return Course(np.array([t1,t2], dtype=int), d)
+		return Course(name, courseType, np.array([t1,t2], dtype=int), d)
 
 	# Some static data
 	TIME_NAMES = [
@@ -123,15 +123,20 @@ class Course:
 
 	# Course methods
 	# Initialize from given time/date
-	def __init__(self, new_t:np.array, new_d:np.array):
+	def __init__(self, name, courseType, new_t:np.array, new_d:np.array):
+		self.name = name
+		self.courseType = courseType
 		self.t = new_t
 		self.d = new_d
 
-	# Easily read what the course is
-	def pretty_print(self):
-		print("d", self.d, "t", self.t)
-		print("".join([self.DAY_NAMES[i] for i in range(5) if self.d[i] > 0]), \
-			  self.TIME_NAMES[self.t[0]][0], " - ", self.TIME_NAMES[self.t[1]-1][1])
+	# Make print(course) output a nice human-readable string.
+	def __str__(self) ->str:
+		#print(self.d, self.t)
+		return "{} {}: {} {} - {}".format(
+			   self.name, self.courseType,
+			   "".join([self.DAY_NAMES[i] for i in range(5) if self.d[i] > 0]), \
+			   self.TIME_NAMES[self.t[0]][0], self.TIME_NAMES[self.t[1]][1]   \
+			   )
 
 
 # Conflict matrix A:
@@ -154,11 +159,25 @@ class Ucsp:
 
 
 if __name__ == "__main__":
-	print("TODO. Please yell at the lazy programmer.")
 	
-	c1 = Course.init_random(1.5, 2)
-	c1.pretty_print()
-	c2 = Course.init_random(3.0, 1)
-	c2.pretty_print()
-	c3 = Course.init_random(1.0, 3)
-	c3.pretty_print()
+	print("Generate a sample (random) schedule from data:")
+	infilename = "data/spring_csv_data.csv"# input("Data file name: ")
+
+	random_schedule = []
+	
+	# This is a terrible file reading hack!! DON'T USE THIS CODE.
+	# import csv to do it properly!!
+	with open(infilename, "r") as infile:
+		header = infile.readline()
+		for line in infile.readlines():
+			line = line.rstrip("\n").split(",")
+			# line has format
+			# dept, courseNumber, courseType, numberOfMeetings, meetingLengthHours, isTba, numberEnrolled, coreqWith, relatesTo,
+			courseNumber = line[1]; courseType = line[2]
+			nMeetings = int(line[3])
+			meetingLength = float(line[4])
+			random_schedule.append(Course.init_random(courseNumber, courseType, meetingLength, nMeetings))
+
+	for course in random_schedule:
+		print(course)
+
