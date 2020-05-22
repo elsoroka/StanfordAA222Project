@@ -35,8 +35,9 @@ import numpy as np
 #     A 9am - 10:30am TuTh class: [i:j] = [11:11], r = [0 1 0 1 0]
 #     A 10a - 12p M lab         : [i:j] = [2:3]  , r = [1 0 0 0 0]
 #     A 3p - 4:30p MW class     : [i:j] = [15:15], r = [0 1 0 1 0]
+
 # How to perturb these class timings:
-# Add / subtract 2 to indices within range
+# Add / subtract 1 to indices within range
 # Change pattern of r
 # r-pattern is only valid if r is spaced out
 # we can swap by "pushing" or "popping" as long as sum(r) stays the same
@@ -139,7 +140,7 @@ class Course:
 			   )
 
 
-# Conflict matrix A:
+# Conflict matrix (is this useful?)
 # [1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0] # 9a 1.0 conflicts with 9a 1.5
 # [0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0] # 10a 1.0 conflicts with 9a 1.5
 # [0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0] # 10a 1.0 conflicts with 10:30a 1.5
@@ -155,8 +156,29 @@ class Course:
 # [0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1] # 6p 1.0 conflicts with 6p 1.5
 # [0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1] # 7p 1.0 conflicts with 6p 1.5
 class Ucsp:
-	pass
 
+	def __init__(schedule:[Course]):
+		'''Initialize a new problem'''
+		self.schedule = schedule
+
+	def add_overlap_constraint(c1, c2, enforce=True):
+		'''Add a constraint that courses c1 and c2 cannot overlap/
+		If enforce=True this is a hard constraint, e.g. c1 and c2
+		are coreqs and must NEVER overlap
+		If enforce=False this is a soft constraint, e.g. c1 and c2
+		are commonly taken together and SHOULDN'T overlap'''
+		pass
+
+	def check_feasible(schedule:[Course])->True or False:
+		'''Check whether a schedule is feasible (all hard constraints met)'''
+		pass
+
+	def check_desirable(schedule:[Course])->float:
+		'''Compute a measure of schedule goodness: count soft constraints met.'''
+		pass
+
+
+# TEST CODE
 
 if __name__ == "__main__":
 	
@@ -164,7 +186,7 @@ if __name__ == "__main__":
 	infilename = "data/spring_csv_data.csv"# input("Data file name: ")
 
 	random_schedule = []
-	
+
 	# This is a terrible file reading hack!! DON'T USE THIS CODE.
 	# import csv to do it properly!!
 	with open(infilename, "r") as infile:
