@@ -128,8 +128,9 @@ class Course:
 	def __init__(self, new_t:np.array, new_d:np.array, courseType, numberEnrolled, cantOverlap, shouldntOverlap):
 		self.courseType      = courseType
 		self.numberEnrolled  = numberEnrolled
-		self.cantOverlap     = cantOverlap.split(";")
-		self.shouldntOverlap = shouldntOverlap.split(";")
+		self.cantOverlap     = [] if cantOverlap == "" else cantOverlap.split(";")
+		self.shouldntOverlap = [] if shouldntOverlap == "" else shouldntOverlap.split(";")
+
 		self.td = np.hstack([new_t, new_d])
 
 		if new_t[0] < self.N_HOUR_SLOTS: # t is in the 1.0 hour slots
@@ -160,12 +161,6 @@ class Course:
 		# No constraints
 		if self.cantOverlap == []:
 			return
-		# Make a set of time/day pairs that contain overlap classes
-		restricted_pairs = []
-		for key in self.cantOverlap:
-			course = schedule[key]
-			restricted_pairs.append(course.td)
-		print("Restricted time/day pairs for overlap set: ", self.cantOverlap, "are", restricted_pairs)
 
 		# Figure out if we are in conflict
 		for key in self.cantOverlap:
@@ -233,12 +228,14 @@ class Course:
 # [0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1] # 6p 1.0 conflicts with 6p 1.5
 # [0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1] # 7p 1.0 conflicts with 6p 1.5
 class Ucsp:
+	# Define what counts as non-business hours.
+	ODD_HOURS_INDICES = [8, 9, 10, 16, 17]
 
-	def __init__(schedule:typing.Dict[str, Course]):
+	def __init__(self, schedule:typing.Dict[str, Course]):
 		'''Initialize a new problem'''
 		self.schedule = schedule
 
-	def add_overlap_constraint(c1, c2, enforce=True):
+	def add_overlap_constraint(self, c1, c2, enforce=True):
 		'''Add a constraint that courses c1 and c2 cannot overlap/
 		If enforce=True this is a hard constraint, e.g. c1 and c2
 		are coreqs and must NEVER overlap
@@ -246,13 +243,33 @@ class Ucsp:
 		are commonly taken together and SHOULDN'T overlap'''
 		pass
 
-	def check_feasible(schedule:typing.Dict[str, Course])->True or False:
+	def check_feasible(self)->True or False:
 		'''Check whether a schedule is feasible (all hard constraints met)'''
-		pass
+		for courseName in self.schedule.keys():
+			course = self.schedule[courseName]			# Figure out if we are in conflict
+			for key in course.cantOverlap:
+				if course.check_conflict(self.schedule[key]):
+					return False
 
-	def check_desirable(schedule:typing.Dict[str, Course])->float:
+		# None found
+		return True
+
+	def check_desirable(self)->float:
 		'''Compute a measure of schedule goodness: count soft constraints met.'''
-		pass
+		softOverlapPenalty = 0.0
+		oddHoursPenalty    = 0.0
+
+		for courseName in self.schedule.keys():
+			course = self.schedule[courseName]			# Figure out if we are in conflict
+			# Check for odd (non-business) hours
+			if course.td[0] in self.ODD_HOURS_INDICES or course.td[1] in self.ODD_HOURS_INDICES:
+				oddHoursPenalty += 1
+			# Check for soft overlap constraint
+			for key in course.shouldntOverlap:
+				if course.check_conflict(self.schedule[key]):
+					softOverlapPenalty += 1.0
+
+		return softOverlapPenalty*2 + oddHoursPenalty
 
 
 # TEST CODE
@@ -276,13 +293,14 @@ if __name__ == "__main__":
 				               int(row['numberEnrolled']),
 				               row['cantOverlap'],
 				               row['shouldntOverlap'])
+	
+	ucsp = Ucsp(random_schedule)
+	print("Random schedule is feasible?", ucsp.check_feasible())
+	print("Random schedule is good? Penalty:", ucsp.check_desirable())
 	for name in random_schedule.keys():
 		print(name, random_schedule[name])
-		random_schedule[name].perturb(1,1)
-		print(name, random_schedule[name])
 
-
-	print("\nConflict test")
+	'''print("\nConflict test")
 			# make a deliberately conflict")ing set to test
 	conflict_schedule = dict()
 	conflict_schedule["AA279B"] = Course(np.array([0,0], dtype=int), np.array([0,1,0,1,0], dtype=int), "LEC", 20, "AA279D", "")
@@ -292,3 +310,4 @@ if __name__ == "__main__":
 	conflict_schedule["AA279B"].make_feasible(conflict_schedule)
 	print(conflict_schedule["AA279B"])
 	print(conflict_schedule["AA279D"])
+	'''
