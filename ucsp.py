@@ -187,7 +187,6 @@ class Course:
 			
 			# now check for conflicts
 			for i in range(t1, t2+1):
-				print(i)
 				if i in range(o1, o2+1):
 					return True
 		# No conflicts found
@@ -209,7 +208,7 @@ class Course:
 	14:[4,5],
 	15:[6,7],
 	16:[7,8],
-	17:[9.10],
+	17:[9,10],
 	}
 # Conflict matrix (is this useful?)
 #  0 1 2 3 4 5 6 7 8 9 1011121314151617
@@ -269,7 +268,7 @@ class Ucsp:
 				if course.check_conflict(self.schedule[key]):
 					softOverlapPenalty += 1.0
 
-		return softOverlapPenalty*2 + oddHoursPenalty
+		return softOverlapPenalty*10 + oddHoursPenalty
 
 
 # TEST CODE
@@ -295,7 +294,7 @@ if __name__ == "__main__":
 				               row['shouldntOverlap'])
 	
 	ucsp = Ucsp(random_schedule)
-	print("Random schedule is feasible?", ucsp.check_feasible())
+	print("Random schedule is feasible?", feasible)
 	print("Random schedule is good? Penalty:", ucsp.check_desirable())
 	for name in random_schedule.keys():
 		print(name, random_schedule[name])
