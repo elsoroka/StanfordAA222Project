@@ -47,7 +47,7 @@ import typing, csv
 # A row r1 overlaps r if: r (xor) r1 != r
 # So a population member has i:j, r
 # Then the course state is two vectors:
-# t in R2, d in R5. We'll define a vector in R8 for computational reasons
+# t in R2, d in R5.
 
 
 class Course:
@@ -120,28 +120,104 @@ class Course:
 	[" 6:00p","7:30p",],
 	]
 	DAY_NAMES = ["M", "Tu", "W", "Th", "F"]
-
+	N_HOUR_SLOTS = 11
+	N_80MIN_SLOTS = 7
 
 	# Course methods
 	# Initialize from given time/date
-	def __init__(self, new_t:np.array, new_d:np.array, courseType, numberEnrolled, coreqWith, relatesTo):
-		self.courseType = courseType
-		self.numberEnrolled = numberEnrolled
-		self.coreqWith = coreqWith
-		self.relatesTo = relatesTo
-		self.t = new_t
-		self.d = new_d
+	def __init__(self, new_t:np.array, new_d:np.array, courseType, numberEnrolled, cantOverlap, shouldntOverlap):
+		self.courseType      = courseType
+		self.numberEnrolled  = numberEnrolled
+		self.cantOverlap     = cantOverlap.split(";")
+		self.shouldntOverlap = shouldntOverlap.split(";")
+		self.td = np.hstack([new_t, new_d])
+
+		if new_t[0] < self.N_HOUR_SLOTS: # t is in the 1.0 hour slots
+			self.t_range = range(0, self.N_HOUR_SLOTS - (self.td[1] - self.td[0]))
+		else:
+			self.t_range = range(self.N_HOUR_SLOTS, self.N_80MIN_SLOTS - (self.td[1] - self.td[0]))
+
+
+	def perturb(self, d=0, t=0):
+		if t != 0:
+			
+			if self.td[0] + t in self.t_range and self.td[1] + t in self.t_range:
+				self.td[0:2] += t
+				
+				
+		if d != 0:
+			n_days = sum(self.td[2:])
+			if n_days == 1:
+				self.td[2:] = np.zeros(5, dtype=int)
+				self.td[2+np.random.choice(range(0,5))] = 1
+			if n_days == 2:
+				choices = np.array([[1,0,1,0,0],
+					      [0,1,0,1,0], [0,0,1,0,1]], dtype=int)
+				self.td[2:] = choices[np.random.choice(range(0,3))]
+			
+
+	def make_feasible(self, schedule):
+		# No constraints
+		if self.cantOverlap == []:
+			return
+		# Make a set of time/day pairs that contain overlap classes
+		restricted_pairs = []
+		for key in self.cantOverlap:
+			course = schedule[key]
+			restricted_pairs.append(course.td)
+		print("Restricted time/day pairs for overlap set: ", self.cantOverlap, "are", restricted_pairs)
+
+		# Figure out if we are in conflict
+		for key in self.cantOverlap:
+			i = 0 # safety limit
+			while self.check_conflict(schedule[key]) and i < 10:
+				print("Conflict!")
+				self.perturb(np.random.choice([-1, 1]), 1)
+				i += 1
+
+
+	def check_conflict(self, otherCourse):
+		t1, t2 = self.td[0], self.td[1]
+		o1, o2 = otherCourse.td[0], otherCourse.td[1]
+		
+		if max(self.td[2:] + otherCourse.td[2:]) > 1: # days overlap
+			
+			if t1 >= self.N_HOUR_SLOTS: # it's an 80min slot
+			# remap it
+				t1, t2 = self.CONFLICT_MAP[t1][0], self.CONFLICT_MAP[t2][1]
+			
+			if o1 >= self.N_HOUR_SLOTS: # it's an 80min slot
+			# remap it
+				o1, o2 = self.CONFLICT_MAP[o1][0], self.CONFLICT_MAP[o2][1]
+			
+			# now check for conflicts
+			for i in range(t1, t2+1):
+				print(i)
+				if i in range(o1, o2+1):
+					return True
+		# No conflicts found
+		return False
 
 	# Make print(course) output a nice human-readable string.
 	def __str__(self) ->str:
 		#print(self.d, self.t)
 		return "{} {} - {}".format(
-			   "".join([self.DAY_NAMES[i] for i in range(5) if self.d[i] > 0]), \
-			   self.TIME_NAMES[self.t[0]][0], self.TIME_NAMES[self.t[1]][1]   \
+			   "".join([self.DAY_NAMES[i] for i in range(5) if self.td[2+i] > 0]), \
+			   self.TIME_NAMES[self.td[0]][0], self.TIME_NAMES[self.td[1]][1]   \
 			   )
 
 
+	CONFLICT_MAP = {
+	11:[0,1],
+	12:[1,2],
+	13:[3,4],
+	14:[4,5],
+	15:[6,7],
+	16:[7,8],
+	17:[9.10],
+	}
 # Conflict matrix (is this useful?)
+#  0 1 2 3 4 5 6 7 8 9 1011121314151617
 # [1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0] # 9a 1.0 conflicts with 9a 1.5
 # [0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0] # 10a 1.0 conflicts with 9a 1.5
 # [0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0] # 10a 1.0 conflicts with 10:30a 1.5
@@ -198,9 +274,21 @@ if __name__ == "__main__":
 				               int(row['numberOfMeetings']),
 				               row['courseType'],
 				               int(row['numberEnrolled']),
-				               row['coreqWith'],
-				               row['relatesTo'])
-
+				               row['cantOverlap'],
+				               row['shouldntOverlap'])
 	for name in random_schedule.keys():
 		print(name, random_schedule[name])
+		random_schedule[name].perturb(1,1)
+		print(name, random_schedule[name])
 
+
+	print("\nConflict test")
+			# make a deliberately conflict")ing set to test
+	conflict_schedule = dict()
+	conflict_schedule["AA279B"] = Course(np.array([0,0], dtype=int), np.array([0,1,0,1,0], dtype=int), "LEC", 20, "AA279D", "")
+	conflict_schedule["AA279D"] = Course(np.array([11,11], dtype=int), np.array([0,1,0,1,0], dtype=int), "LEC", 20, "AA279B", "")
+	print(conflict_schedule["AA279B"])
+	print(conflict_schedule["AA279D"])
+	conflict_schedule["AA279B"].make_feasible(conflict_schedule)
+	print(conflict_schedule["AA279B"])
+	print(conflict_schedule["AA279D"])
