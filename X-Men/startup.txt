@@ -1,0 +1,4 @@
+conda activate cs229
+
+cd C:\Users\gypsy\OneDrive\Documents\AA222\StanfordAA222Project\X-Men
+
