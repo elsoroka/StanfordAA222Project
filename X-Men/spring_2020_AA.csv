@@ -1,0 +1,15 @@
+a_dept, b_number, c_type, d_numberOfMeetings, e_lengthMin, f_MinperWeek, g_isTba, h_numberEnrolled
+AA,AA 203:,LEC,2,80,160,False,103
+AA,AA 204:,LEC,2,80,160,False,31
+AA,AA 218:,LEC,2,80,160,False,18
+AA,AA 222:,LEC,2,80,160,False,83
+AA,AA 252:,LEC,1,170,170,False,43
+AA,AA 257:,LEC,2,80,160,False,4
+AA,AA 273:,LEC,2,80,160,False,74
+AA,AA 279B:,LEC,2,80,160,False,23
+AA,AA 279D:,LEC,3,80,240,False,14
+AA,AA 294:,COL,1,80,80,False,21
+AA,AA 109Q:,ISS,3,80,240,False,17
+AA,AA 119N:,ISF,2,50,100,False,12
+AA,AA 146B:,LAB,2,80,160,False,3
+AA,AA 173:,LEC,2,50,100,False,11

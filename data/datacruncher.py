@@ -39,7 +39,7 @@ def parseJsonData(infile, outfile):
 		# (if timeisTBA is true, there will be 0 meetings of 0 length)
 		# and number enrolled
 		# This makes the header row
-		outfile.write("dept, courseNumber, courseType, numberOfMeetings, meetingLengthHours, isTba, numberEnrolled\r\n")
+		outfile.write("a_dept, b_number, c_type, d_numberOfMeetings, e_lengthMin, f_MinperWeek, g_isTba, h_numberEnrolled\r\n")
 		
 		rawData = json.load(infile)
 		for divisionName in rawData.keys(): # iterate over division (grad/undergrad etc)
@@ -67,9 +67,10 @@ def writeCourseToFile(course, outfile):
 			# If section is not TBA (there is a time and date associated with it)
 			if not meeting['timeIsTBA']:
 				# Count the hours per MEETING
-				timeHours = (meeting['endTime'] - meeting['startTime'] + 10)/60
+				timeMinutes = (meeting['endTime'] - meeting['startTime'])
 				# Count the DAYS per week this class meets
 				numMeetings = len(meeting['days'])
+				timeMinperWeek = timeMinutes * numMeetings
 
 			# Write as a CSV string
 			outfile.write(",".join([
@@ -77,10 +78,11 @@ def writeCourseToFile(course, outfile):
 				course['courseNumber'],
 				section['courseType'],
 				str(numMeetings),
-				str(timeHours),
+				str(timeMinutes),
+				str(timeMinperWeek),
 				str(meeting['timeIsTBA']),
 				str(section['enrolled'])
-				]) + "\r\n")
+				]) + "\n")
 
 
 if __name__ == "__main__":
