@@ -15,10 +15,9 @@ def main():
     k_max = 1000
     pop_size = 2
     schedule = GenAlg(K_max=k_max,m=pop_size)  
-    schedule.init_POP() 
-    '''
-    rv = randint.rvs(0,10,size = 10)
-    '''
+    schedule.init_POP()
+    schedule.NXT_GEN() 
+    schedule.plot_sched()
 
     
 class GenAlg:
@@ -42,19 +41,21 @@ class GenAlg:
         for p in range(self.POP_size):
             pop_p = []
             for c in range(len(self.courses[2])):
-                if self.courses[2][c] == 50:
+                if self.courses[2][c] <= 50:
                     pop_p[len(pop_p):] = randint.rvs(0,29,size = 1)
-                elif self.courses[2][c] == 80:
+                elif self.courses[2][c] <= 80:
                     pop_p[len(pop_p):] = randint.rvs(30,43,size = 1)
-                elif self.courses[2][c] == 100:
+                elif self.courses[2][c] <= 100:
                     pop_p[len(pop_p):] = randint.rvs(44,63,size = 1)
-                elif self.courses[2][c] == 110:
+                elif self.courses[2][c] <= 110:
                     pop_p[len(pop_p):] = randint.rvs(64,75,size = 1)
-                elif self.courses[2][c] == 150:
+                elif self.courses[2][c] <= 150:
                     pop_p[len(pop_p):] = randint.rvs(76,85,size = 1)
-                elif self.courses[2][c] == 160:
+                elif self.courses[2][c] <= 160:
                     pop_p[len(pop_p):] = randint.rvs(86,92,size = 1)
-                elif self.courses[2][c] == 220:
+                elif self.courses[2][c] <= 220:
+                    pop_p[len(pop_p):] = randint.rvs(93,100,size = 1)
+                elif self.courses[2][c] <=240:
                     pop_p[len(pop_p):] = randint.rvs(93,100,size = 1)
                 else:
                     print('error,',self.courses[2][c],'min not accounted for')
@@ -64,8 +65,23 @@ class GenAlg:
     def NXT_GEN(self):
         for k in range(self.K_max):
             parents = self.selection()
-            children = cross_over(parents)
-            self.POP = mutant(children)
+            if self.obj(parents[0]) == 0:
+                break
+            children = []
+            ch = 0
+            for c in range(self.POP_size):
+                if c < len(parents):
+                    children[len(children):] = [parents[c]]
+                else:
+                    a = parents[ch]
+                    if (ch+1) >=len(parents):
+                        b = parents[0]
+                    else:
+                        b = parents[ch+1]
+                    children[len(children):] = [self.cross_over(a,b)]
+                    ch +=1
+            self.POP = self.mutant(children)
+        self.POP = self.selection(last=1)
 
     def obj(self,POP_single): #fix later
         score = 0
@@ -79,32 +95,42 @@ class GenAlg:
                 score += randint.rvs(0,100,size = 1)
         return score
 
-
-    def selection(self): 
+    def selection(self,last=0): 
         '''Truncation'''
         m = self.POP_size
-        temp = np.zeroes((m,1))
+        temp = np.zeros((m,1))
         for i in range(m):
-            temp[i] = self.obj(POP[i])
-            obj = sorted(temp)
-            key = sorted(range(len(temp)), key=lambda k: temp[k])
-            parents = []
-            for ii in range(m/3):
-                parents[len(parents):] = self.POP[key[ii]]
+            temp[i] = self.obj(self.POP[i])
+        obj = sorted(temp)
+        key = sorted(range(len(temp)), key=lambda k: temp[k])
+        parents = []
+        if last==1:
+            for ii in range(m):
+                parents[len(parents):] = [self.POP[key[ii]]]
+
+        else:
+            for ii in range(int(m/2)):
+                parents[len(parents):] = [self.POP[key[ii]]]       
         return parents
 
+    def cross_over(self,a_par, b_par):
+        child = []
 
-    '''
+        for i in range(self.num_courses):
+            if np.random.normal(loc=0.0, scale=1.0) <0:
+                child.append(a_par[i])
+            else:
+                child.append(b_par[i]) 
 
-def cross_over(parents,m):
-    return child
+        return child
 
-def mutant(child):
-    return child
+    def mutant(self,child):
+        return child
 
-def objective(individual):
-    return 0
-    '''
+    def plot_sched(self):
+        print('done')
+        print(self.POP[0])
+
 
 def load_dataset(csv_path):
     """Load dataset from a CSV file.
