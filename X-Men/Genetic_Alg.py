@@ -13,20 +13,42 @@ import dictionary
 def main():
 
     k_max = 100
-    pop_size = 1000 #must be an even number
-    schedule = GenAlg(K_max=k_max,m=pop_size)  
-    schedule.init_POP()
-    schedule.NXT_GEN() 
-    schedule.plot_sched()
+    pop_size = np.array([2, 10, 100, 250, 500,750, 1000]) #must be an even number
+    muts = 30
+    pts = 7
+    start = np.zeros((pts,1))
+    end = np.zeros((pts,1))
+    it = range(0,pts,1)
+    for i in range(pts):
+        schedule = GenAlg(K_max=k_max,m=pop_size[i],mutation_rt=muts)  
+        schedule.init_POP()
+        schedule.NXT_GEN() 
+        start[i],end[i] = schedule.plot_sched()
+    
+    plt.figure(1)
+    plt.plot(pop_size, start, 'ro', linewidth=2)
+    plt.plot(pop_size, end, 'ko', linewidth=2)
+    plt.xlabel('Population Size')
+    plt.ylabel('score')
+    plt.show()
+    '''
+    plt.figure(1)
+    plt.plot(muts, start, 'ro', linewidth=2)
+    plt.plot(muts, end, 'ko', linewidth=2)
+    plt.xlabel('mutation rate')
+    plt.ylabel('score')
+    plt.show()
+    '''
 
     
 class GenAlg:
 
-    def __init__(self,K_max=1000,m=1000):
+    def __init__(self,K_max=1000,m=1000,mutation_rt=30):
         self.K_max = K_max #max iteration
         self.POP_size = m
         self.courses = load_dataset('spring_2020_AA.csv')
         self.num_courses = len(self.courses[0])
+        self.muts = mutation_rt
         '''
         define dictionary of options
         option #, time slots, time/week,...
@@ -48,8 +70,12 @@ class GenAlg:
     def NXT_GEN(self):
         for k in range(self.K_max):
             parents = self.selection()
-            if k%7==0:
+            '''
+            if k%10==0:
                 print(self.obj(parents[0]))
+            '''
+            if k == 0:
+                self.strt_score = self.obj(parents[0])
             if self.obj(parents[0]) == 0:
                 break
             children = []
@@ -67,6 +93,7 @@ class GenAlg:
                     ch +=1
             self.POP = self.mutant(children)
         self.POP = self.selection(last=1)
+        self.fin_score = self.obj(self.POP[0])
 
     def obj(self,POP_single): #fix later
         score = 0
@@ -119,7 +146,7 @@ class GenAlg:
 
     def mutant(self,child):
         '''Bit Wise mutation'''
-        muts = 20 #mutation rate
+        muts = self.muts #mutation rate
         randint.rvs(76,85,size = 1)
         for pop in range(1,len(child)):
             for clss in range(self.num_courses):
@@ -128,8 +155,12 @@ class GenAlg:
         return child
 
     def plot_sched(self):
+        
         print('done')
-        print(self.POP[0])
+        print(self.strt_score,self.fin_score)
+        #print(self.POP[0])
+        
+        return self.strt_score,self.fin_score
 
 def rnd_ass(cls_len):
     if cls_len <= 50:
