@@ -13,7 +13,7 @@ import dictionary
 def main():
 
     k_max = 100
-    pop_size = 1000
+    pop_size = 1000 #must be an even number
     schedule = GenAlg(K_max=k_max,m=pop_size)  
     schedule.init_POP()
     schedule.NXT_GEN() 
@@ -22,7 +22,7 @@ def main():
     
 class GenAlg:
 
-    def __init__(self,K_max=1000,m=100):
+    def __init__(self,K_max=1000,m=1000):
         self.K_max = K_max #max iteration
         self.POP_size = m
         self.courses = load_dataset('spring_2020_AA.csv')
@@ -118,9 +118,13 @@ class GenAlg:
         return child
 
     def mutant(self,child):
-        for pop in range(len(child)):
+        '''Bit Wise mutation'''
+        muts = 20 #mutation rate
+        randint.rvs(76,85,size = 1)
+        for pop in range(1,len(child)):
             for clss in range(self.num_courses):
-                num = 0
+                if randint.rvs(0,100,size = 1)<muts:
+                    child[pop][clss] = rnd_ass(self.courses[2][clss])[0]
         return child
 
     def plot_sched(self):
