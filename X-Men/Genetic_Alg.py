@@ -12,8 +12,8 @@ import dictionary
 
 def main():
 
-    k_max = 1000
-    pop_size = 2
+    k_max = 100
+    pop_size = 1000
     schedule = GenAlg(K_max=k_max,m=pop_size)  
     schedule.init_POP()
     schedule.NXT_GEN() 
@@ -41,30 +41,15 @@ class GenAlg:
         for p in range(self.POP_size):
             pop_p = []
             for c in range(len(self.courses[2])):
-                if self.courses[2][c] <= 50:
-                    pop_p[len(pop_p):] = randint.rvs(0,29,size = 1)
-                elif self.courses[2][c] <= 80:
-                    pop_p[len(pop_p):] = randint.rvs(30,43,size = 1)
-                elif self.courses[2][c] <= 100:
-                    pop_p[len(pop_p):] = randint.rvs(44,63,size = 1)
-                elif self.courses[2][c] <= 110:
-                    pop_p[len(pop_p):] = randint.rvs(64,75,size = 1)
-                elif self.courses[2][c] <= 150:
-                    pop_p[len(pop_p):] = randint.rvs(76,85,size = 1)
-                elif self.courses[2][c] <= 160:
-                    pop_p[len(pop_p):] = randint.rvs(86,92,size = 1)
-                elif self.courses[2][c] <= 220:
-                    pop_p[len(pop_p):] = randint.rvs(93,100,size = 1)
-                elif self.courses[2][c] <=240:
-                    pop_p[len(pop_p):] = randint.rvs(93,100,size = 1)
-                else:
-                    print('error,',self.courses[2][c],'min not accounted for')
-                    pop_p[len(pop_p):] = randint.rvs(1000,1001,size = 1)
+                pop_p[len(pop_p):] = rnd_ass(self.courses[2][c])
+                
             self.POP[len(self.POP):]=[pop_p]
 
     def NXT_GEN(self):
         for k in range(self.K_max):
             parents = self.selection()
+            if k%7==0:
+                print(self.obj(parents[0]))
             if self.obj(parents[0]) == 0:
                 break
             children = []
@@ -85,14 +70,24 @@ class GenAlg:
 
     def obj(self,POP_single): #fix later
         score = 0
-        overlap = 100
-        lunch = 10
+        overlap = 150
         early = 50
         late = 75
-
+        lunch = 10
+        check = []
         for i in range(self.num_courses):
-            if POP_single != 1000 and POP_single != 1001:
-                score += randint.rvs(0,100,size = 1)
+            if self.options[POP_single[i]][3]<930:
+                score+=early
+            if self.options[POP_single[i]][4]>1630:
+                score+=late
+            check_set = set(check)
+            for slot in range(len(self.options[POP_single[i]][0])):
+                if self.options[POP_single[i]][0][slot] in check_set:
+                    score+=overlap
+                else:
+                    check.append(self.options[POP_single[i]][0][slot])
+            if 1200 in range(self.options[POP_single[i]][3],self.options[POP_single[i]][4]):
+                score+=lunch
         return score
 
     def selection(self,last=0): 
@@ -115,33 +110,51 @@ class GenAlg:
 
     def cross_over(self,a_par, b_par):
         child = []
-
         for i in range(self.num_courses):
             if np.random.normal(loc=0.0, scale=1.0) <0:
                 child.append(a_par[i])
             else:
                 child.append(b_par[i]) 
-
         return child
 
     def mutant(self,child):
+        for pop in range(len(child)):
+            for clss in range(self.num_courses):
+                num = 0
         return child
 
     def plot_sched(self):
         print('done')
         print(self.POP[0])
 
+def rnd_ass(cls_len):
+    if cls_len <= 50:
+        return randint.rvs(0,29,size = 1)
+    elif cls_len <= 80:
+        return randint.rvs(30,43,size = 1)
+    elif cls_len <= 100:
+        return randint.rvs(44,63,size = 1)
+    elif cls_len <= 110:
+        return randint.rvs(64,75,size = 1)
+    elif cls_len <= 150:
+        return randint.rvs(76,85,size = 1)
+    elif cls_len <= 160:
+        return randint.rvs(86,92,size = 1)
+    elif cls_len <= 220:
+        return randint.rvs(93,100,size = 1)
+    elif cls_len <=240:
+        return randint.rvs(93,100,size = 1)
+    else:
+        print('error,',cls_len,'min not accounted for')
+        return randint.rvs(1000,1001,size = 1)
 
 def load_dataset(csv_path):
     """Load dataset from a CSV file.
-
     Args:
          csv_path: Path to CSV file containing dataset.
-
     Returns:
         Course List
     """
-
     # Load headers
     with open(csv_path, 'r') as csv_fh:
         headers = csv_fh.readline().strip().split(',')
