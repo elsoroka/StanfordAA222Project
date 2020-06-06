@@ -1,5 +1,12 @@
+# File created: 06/04/2020
+# Tested on   : Python 3.7.4
+# Author(s)   : Emiko Soroka,
+# Unittests   : None
+# Description : Integer linear program solution to UCSP
+
 import numpy as np
 import cvxpy as cvx
+
 
 # Test data setup
 # Length of each class in multiples of 1 hour.
@@ -25,15 +32,16 @@ LAST_1_5_BLOCK  = 7 # represents 18:00
 # Range for 1 hour multiple classes
 FIRST_1_0_BLOCK = 1  # represents 8:00 
 LAST_1_0_BLOCK  = 12 # represents 19:00
+
+BUSINESS_HOURS_START_1_0 = 2 # 9am
+BUSINESS_HOURS_START_1_5 = 1 # 9am
+BUSINESS_HOURS_END_1_0   = 10 # 5 - 6pm
+BUSINESS_HOURS_END_1_5   = 6  # 4:30 - 6pm
 #                1  2  3   4   5   6   7   8   9   10  11  12 
 # 1.0 blocks are 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19
 #                1   2     3    4    5   6    7
 # 1.5 blocks are 9, 10:30, 12, 1:30, 3, 4:30, 6
-CONVERT_1_5_TO_1_OVERLAP = {1:[2,3], 2:[3,4], 3:[5,6], 4:[6,7], 5:[8,9], 6:[9,10], 7:[11,12]}
-# 1 2 3 4 5 6 7 
-# 2 3 5 6 8 9 11
-# x + 1 + (x-1)//2
-# x + 1 + (x-1)//2
+# The function x + 1 + (x-1)/2 converts 1.5 hour indices to 1.0 hour indices.
 
 
 # Compliance matrix for 2 day classes: if A_2 * d <= 1 it is valid.
@@ -50,7 +58,27 @@ d_var = cvx.Variable((J, D), boolean=True)
 t_var = cvx.Variable(J, integer=True)
 constraints = []
 
-objective = cvx.Minimize(0.0) # feasibility problem
+
+# Penalty function
+def penalty(t_var):
+	time_p = 0.0; overlap_p = 0.0
+	# First: Penalize classes at bad times
+	for j in range(J):
+		if 1.5 == class_block_types[j]:
+			# 0 if time is before end of business hours
+			# ex: if time is 7 (6pm - 7:30pm) and, (7-c)_+ = 1
+			time_p += cvx.pos(t_var[j] - BUSINESS_HOURS_END_1_5)
+			# 0 if time is after start of business hours
+			# example: if time is 1 (8am) and (2-1)
+			time_p += cvx.pos(BUSINESS_HOURS_START_1_5 - t_var[j])
+		else: 
+			time_p += cvx.pos(t_var[j] - BUSINESS_HOURS_END_1_5)
+			time_p += cvx.pos(BUSINESS_HOURS_START_1_0 - t_var[j])
+	# Second, Penalize classes overlapping in soft groups
+
+	return time_p
+
+objective = cvx.Minimize(penalty(t_var))
 
 for j in range(J):
 	# Add constraints on class start/end times
