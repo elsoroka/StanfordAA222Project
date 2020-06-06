@@ -6,24 +6,101 @@
 
 import numpy as np
 import cvxpy as cvx
+import csv
 
 
-# Test data setup
+#  #  #  #  #  #  #  #  #
+#    Test data setup    #
+#  #  #  #  #  #  #  #  #
+
+infilename = "data/winter_csv_data.csv"# input("Data file name: ")
+
+
+class_lengths       = []
+class_block_types   = []
+class_day_types     = []
+hard_overlap_groups_names = []
+soft_overlap_groups_names = []
+
+# We need the order of course names
+# to replace the course names in the overlap groups with indices
+course_names_to_indices = {}
+course_indices_to_names = {}
+
+infile = open(infilename, "r")
+
+# Use builtin csv reader
+reader = csv.DictReader(infile)
+for i, row in enumerate(reader):
+	class_day_types.append(int(row['numberOfMeetings']))
+	
+	# Retrieve the soft constraint group
+	soft_group = [g for g in row['shouldntOverlap'].split(";") if g != "" and g]
+	if [] != soft_group:
+		# Don't forget to add this class to the group!
+		soft_group.append(row['courseNumber'])
+		soft_overlap_groups_names.append(soft_group)
+
+	# Retrieve the hard constraint group
+	hard_group = [g for g in row['cantOverlap'].split(";") if g != ""]
+	if [] != hard_group:
+		hard_group.append(row['courseNumber'])
+		hard_overlap_groups_names.append(hard_group)
+
+	# Handle the meetingLength
+	meetingLength = float(row['meetingLengthHours'])
+	block_type = 0
+	# Handle 1.5 hour blocks vs 1 hour blocks
+	if 0 == meetingLength % 1.5: # divisible by 1.5
+		block_type = 1.5
+		meetingLength += 0.5 # round up
+	else: # divisible by 1.0
+		block_type = 1.0
+	class_block_types.append(block_type)
+	class_lengths.append(int(meetingLength))
+
+	# Save the course name
+	course_names_to_indices[row['courseNumber']] = i
+	course_indices_to_names[i] = row['courseNumber']
+
+# Close file
+infile.close()
+
+# Now we need to translate the overlap groups, which have course names,
+# into indices
+def group_name_to_index(groups):
+	index_group = []
+	for group in groups:
+		name1 = group[0]
+		tmp = [course_names_to_indices[name1],]
+		for name in group[1:]:
+			tmp.append(course_names_to_indices[name])
+		tmp.sort()
+		index_group.append(tmp)
+	return index_group
+
+hard_overlap_groups = group_name_to_index(hard_overlap_groups_names)
+soft_overlap_groups = group_name_to_index(soft_overlap_groups_names)
+
+
+
 # Length of each class in multiples of 1 hour.
-class_lengths     = [2, 1, 2, 2] # 1.5 hours, 1.0 hours, 1.5 hours, 2
-class_block_types = [1.5, 1, 1.5, 1] # class is in 1.5 hour or 1 hour blocks
+#class_lengths     = [2, 1, 2, 2] # 1.5 hours, 1.0 hours, 1.5 hours, 2
+#class_block_types = [1.5, 1, 1.5, 1] # class is in 1.5 hour or 1 hour blocks
 
 # Type of each class
-class_day_types   = [2, 3, 2, 1]
+#class_day_types   = [2, 3, 2, 1]
 
 J = len(class_lengths) # Number of classes
 
-hard_overlap_groups = [[0,2,3],]
+#hard_overlap_groups = [[0,2,3],]
 
-soft_overlap_groups = [[1,2,],]
+#soft_overlap_groups = [[1,2,],]
 
 
-# Solver setup
+#  #  #  #  #  #  #  #  #
+#      Solver setup     #
+#  #  #  #  #  #  #  #  #
 
 D = 5 # length of day vector
 # Represent the times in half-hour blocks so the 1.5 hour classes
@@ -84,7 +161,7 @@ def penalty(t_var):
 		for i in group:
 			for j in group:
 				if j > i: # avoid double penalty, e.g. 1<->2, 2<->1
-					print("Penalizing {}, {}".format(i, j))
+					print("Penalizing {}, {}".format(course_indices_to_names[i], course_indices_to_names[j]))
 					idx_1 = i; idx_2 = j;
 					# code reuse, beware
 					c1_start = t_var[idx_1]
@@ -101,11 +178,11 @@ def penalty(t_var):
 						# Convert to 1 hour overlap
 						c2_start = c2_start + 1 + (c2_start-1)/2
 
-
+					# Something wrong with this penalty.
 					# Add the penalty
-					overlap_p += cvx.maximum(c2_start - c1_start + class_lengths[idx_2], \
+					overlap_p += -cvx.minimum(c2_start - c1_start + class_lengths[idx_2], \
 										 c1_start - c2_start + class_lengths[idx_1], \
-										 cvx.max(d1 + d2) - 1)
+										 -cvx.max(d1 + d2) + 1)
 
 	# Third. Penalize classes occurring at lunchtime.
 	# TODO. (lower priority)
@@ -197,7 +274,7 @@ for group in hard_overlap_groups:
 problem = cvx.Problem(objective,constraints)
 problem.solve(solver = cvx.GLPK_MI)
 print("GLPK finished with status", problem.status)
-
+print("Penalty: ", problem.value)
 
 # Interpret the results
 hour_class_map = {1:"8:00", 2:"9:00", 3:"10:00", 4:"11:00", 5:"12:00", \
@@ -219,5 +296,5 @@ for j in range(J):
 		start_hour = hour_class_map[t_var[j].value]
 		end_hour   = hour_class_map[t_var[j].value + class_lengths[j]//1.0]
 
-	print("Class {}. time: {}-{}, days: {}".format(j, start_hour, end_hour, get_days(d_var[j,:].value)))
+	print("{} {}: {}-{}, {}".format(j, course_indices_to_names[j], start_hour, end_hour, get_days(d_var[j,:].value)))
 
