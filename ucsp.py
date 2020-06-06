@@ -7,6 +7,7 @@
 
 import numpy as np
 import typing, csv
+from collections import OrderedDict
 # We have two types of timeslots: hour and 1.5-hour.
 # A course consists of one or more indices [i:j] into this schedule
 
@@ -139,10 +140,13 @@ class Course:
 			self.t_range = range(self.N_HOUR_SLOTS, self.N_80MIN_SLOTS - (self.td[1] - self.td[0]))
 
 
+	def is_valid(self, t):
+		return self.td[0] + t in self.t_range and self.td[1] + t in self.t_range
+
 	def perturb(self, d=0, t=0):
 		if t != 0:
 			
-			if self.td[0] + t in self.t_range and self.td[1] + t in self.t_range:
+			if self.is_valid(t):
 				self.td[0:2] += t
 				
 				
@@ -268,7 +272,27 @@ class Ucsp:
 				if course.check_conflict(self.schedule[key]):
 					softOverlapPenalty += 1.0
 
-		return softOverlapPenalty*10 + oddHoursPenalty
+		return softOverlapPenalty*10.0 + oddHoursPenalty*1.0
+
+
+	def get_all_time_vectors(self)->np.array:
+		result = np.empty(len(self.schedule.keys()))
+		for i, courseName in enumerate(self.schedule.keys()):
+			result[i:(i+1)] = self.schedule[courseName].td[0]
+		return result
+
+
+	def add_all_time_vectors(self, v:np.array)->np.array:
+		result = np.empty(len(self.schedule.keys()))
+		for i, courseName in enumerate(self.schedule.keys()):
+			if self.schedule[courseName].is_valid(v[i]):
+				#it has to be an integer
+				self.schedule[courseName].perturb(0, int(v[i]))
+			else:
+				self.schedule[courseName].perturb(np.random.choice([-1,0,1]), 0)
+
+			result[i:i+1] = self.schedule[courseName].td[0]
+		return result
 
 
 # TEST CODE
@@ -278,7 +302,7 @@ if __name__ == "__main__":
 	print("Generate a sample (random) schedule from data:")
 	infilename = "data/spring_csv_data.csv"# input("Data file name: ")
 
-	random_schedule = dict()
+	random_schedule = OrderedDict()
 
 	with open(infilename, "r") as infile:
 		# Use builtin csv reader
