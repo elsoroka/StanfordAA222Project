@@ -33,16 +33,16 @@ for i, row in enumerate(reader):
 	class_day_types.append(int(row['numberOfMeetings']))
 	
 	# Retrieve the soft constraint group
-	soft_group = [int(g) for g in row['shouldntOverlap'].split(";") if g != "" and g]
+	soft_group = [int(g)-1 for g in row['shouldntOverlap'].split(";") if g != '']
 	if [] != soft_group:
 		# Don't forget to add this class to the group!
-		soft_group.append(int(row['dataNumber']))
+		soft_group.append(int(row['dataNumber'])-1) # convert to 0-based indexing
 		soft_overlap_groups.append(soft_group)
 
 	# Retrieve the hard constraint group
-	hard_group = [int(g) for g in row['cantOverlap'].split(";") if g != ""]
+	hard_group = [int(g)-1 for g in row['cantOverlap'].split(";") if g != '']
 	if [] != hard_group:
-		hard_group.append(int(row['dataNumber']))
+		hard_group.append(int(row['dataNumber'])-1)
 		hard_overlap_groups.append(hard_group)
 
 	# Handle the meetingLength
@@ -60,23 +60,11 @@ for i, row in enumerate(reader):
 	# Save the course name
 	course_indices_to_names[i] = row['courseNumber']
 
+ # Number of classes
+J = len(class_lengths)
 # Close file
 infile.close()
 
-
-
-# Length of each class in multiples of 1 hour.
-#class_lengths     = [2, 1, 2, 2] # 1.5 hours, 1.0 hours, 1.5 hours, 2
-#class_block_types = [1.5, 1, 1.5, 1] # class is in 1.5 hour or 1 hour blocks
-
-# Type of each class
-#class_day_types   = [2, 3, 2, 1]
-
-J = len(class_lengths) # Number of classes
-
-#hard_overlap_groups = [[0,2,3],]
-
-#soft_overlap_groups = [[1,2,],]
 
 
 #  #  #  #  #  #  #  #  #
@@ -122,7 +110,7 @@ constraints = []
 # OBJECTIVE - Penalty function
 
 def penalty(t_var):
-	time_p = 0.0; overlap_p = 0.0; lunchtime_p = 0.0
+	time_p = 0.0; overlap_p = 0.0; lunchtime_p = 0.0; fri_class_p = 0.0;
 	
 	# First: Penalize classes at bad times
 	for j in range(J):
@@ -136,6 +124,10 @@ def penalty(t_var):
 		else: 
 			time_p += cvx.pos(t_var[j] - BUSINESS_HOURS_END_1_5)
 			time_p += cvx.pos(BUSINESS_HOURS_START_1_0 - t_var[j])
+		
+		# penalty for Friday classes
+		# promotes MW and TuTh over WF for 2-days-per-week classes
+		fri_class_p += d_var[j,-1]
 	
 	# Second, Penalize classes overlapping in soft groups
 	for group in soft_overlap_groups:
@@ -159,17 +151,28 @@ def penalty(t_var):
 						# Convert to 1 hour overlap
 						c2_start = c2_start + 1 + (c2_start-1)/2
 
-					# Something wrong with this penalty.
 					# Add the penalty
-					overlap_p += -cvx.minimum(c2_start - c1_start + class_lengths[idx_2], \
-										 c1_start - c2_start + class_lengths[idx_1], \
-										 -cvx.max(d1 + d2) + 1)
-
+					# Want 0 >= cvx.max(d1 + d2) - 1
+					# if all are violated, e.g. positive
+					# we get a penalty
+					# Classes DO overlap when:
+					#   t1[ ]t2
+					# 1[      ]c2
+					# and max(d1 + d2) - 2 == 0 or -1
+					# min(-d1 + -d2) + 1 = 0 (no violation) or -1 (violation)
+					# so c1 - t1 + -10*(max(d1 + d2) - 2) >= 0 for overlap
+					# -c1 + t1 + 10*(max(d1 + d2) - 2) <= 0 for overlap
+					# Don't question it!
+					# It isn't a DCP error!
+					overlap_p += \
+					cvx.pos(c1_start - c2_start - (cvx.min(-d1 + -d2) + 2)) + \
+					cvx.pos(c1_start + class_lengths[j] - c2_start - (cvx.min(-d1 + -d2) + 2))
+					
 	# Third. Penalize classes occurring at lunchtime.
 	# TODO. (lower priority)
 
 	# ADJUST RELATIVE WEIGHTS HERE
-	return 1 * time_p + 1 * lunchtime_p + 10 * overlap_p
+	return 1 * time_p + 1 * lunchtime_p + 10 * overlap_p + 1 * fri_class_p
 
 # Set objective
 objective = cvx.Minimize(penalty(t_var))
@@ -179,16 +182,17 @@ objective = cvx.Minimize(penalty(t_var))
 
 for j in range(J):
 	# Add constraints on class start/end times
-	lb, ub = 0, 0	
-	if 0 == class_lengths[j] % 2: # class divisible into hours
-		lb = FIRST_1_0_BLOCK
-		ub = LAST_1_0_BLOCK - (class_lengths[j]//2 - 1)
-
-	else: # divisble into 1.5 hours
+	lb, ub = FIRST_1_0_BLOCK, LAST_1_0_BLOCK
+		
+	if 1.5 == class_block_types[j]: # class divisible into 1.5 hour blocks
 		lb = FIRST_1_5_BLOCK
-		ub = LAST_1_5_BLOCK - (class_lengths[j]//3 - 1)
-	print("j: {}, lb={}, ub={}".format(j, lb, ub))
+		ub = LAST_1_5_BLOCK - (class_lengths[j]//1.5 - 1)
 
+	else: # divisble into 1.0 hours
+		lb = FIRST_1_0_BLOCK
+		ub = LAST_1_0_BLOCK - (class_lengths[j]//1 - 1)
+ 
+	# print("Course {}, lb, {}, ub, {}".format(j, lb, ub))
 	constraints.append(t_var[j] <= ub)
 	constraints.append(t_var[j] >= lb)
 
@@ -202,7 +206,7 @@ for j in range(J):
 		constraints.append(d_var[j,:] == [True, False, True, False, True])
 
 
-def add_conflict(idx_1, idx_2, constraints):
+def add_conflict(idx_1, idx_2, bool_idx, constraints):
 	# Conflict: c1 vs c2
 	# Either c1_start after c2_end or c2_end before c1_start
 	#     or c2_start after c1_end or c1_end before c2_start
@@ -216,11 +220,11 @@ def add_conflict(idx_1, idx_2, constraints):
 	d2 = d_var[idx_2,:]
 
 	# handle the constraint between a 1.5 hour and 1 hour class
-	if 1.5 == class_block_types[idx_1] and 1.0 == class_block_types[idx_2]:
+	if 1.5 == class_block_types[idx_1]: # and 1.0 == class_block_types[idx_2]:
 		# Convert to 1 hour overlap
 		c1_start = c1_start + 1 + (c1_start-1)/2
 
-	elif 1.5 == class_block_types[idx_2] and 1.0 == class_block_types[idx_1]:
+	if 1.5 == class_block_types[idx_2]: # and 1.0 == class_block_types[idx_1]:
 		# Convert to 1 hour overlap
 		c2_start = c2_start + 1 + (c2_start-1)/2
 
@@ -238,19 +242,36 @@ def add_conflict(idx_1, idx_2, constraints):
 	# So the constraints are:
 	# max(d1 + d2) <= 1 (no day overlap) OR (one of the time overlap checks)
 
-	overlap_ij = cvx.Variable(3, boolean=True)
-	constraints.append(c1_start - c2_start >= class_lengths[idx_2] + overlap_ij[0]*-10)
-	constraints.append(c2_start - c1_start >= class_lengths[idx_1] + overlap_ij[1]*-10)
-	constraints.append(cvx.max(d1 + d2) <= 1 + 5*overlap_ij[2])
-	constraints.append(cvx.sum(overlap_ij) <= 1) # At least one must hold
+	overlap_ij = conflict_booleans[bool_idx,:]
+
+	constraints.append(c1_start - c2_start >= class_lengths[idx_2] + overlap_ij[0]*-100)
+	constraints.append(c2_start - c1_start >= class_lengths[idx_1] + overlap_ij[1]*-100)
+	constraints.append(cvx.max(d1 + d2) <= 1 + 10*overlap_ij[2])
+	constraints.append(cvx.sum(overlap_ij) <= 2) # At least one must hold
 
 
+# Cont the number of conflicts we have
+n_conflicts = 0
+for group in hard_overlap_groups:
+	for i in group:
+		for j in group:
+			if j > i:
+				print(i,j)
+				n_conflicts += 1 if j > 1 else 0
+
+print("There are ", n_conflicts, "conflicts")
+# Now we know how many conflicts there are, we can define booleans to control their constraints
+conflict_booleans = cvx.Variable((n_conflicts, 3), boolean=True)
 # Go over conflicts
+bool_idx = 0
 for group in hard_overlap_groups:
 	for i in group:
 		for j in group:
 			if j > i: # don't add double constraints, e.g. 1<->2 and 2<->1
-				add_conflict(i, j, constraints)
+				print("Adding conflict:", i, j)
+				add_conflict(i, j, bool_idx, constraints)
+				bool_idx += 1
+
 
 problem = cvx.Problem(objective,constraints)
 problem.solve(solver = cvx.GLPK_MI)
@@ -278,4 +299,3 @@ for j in range(J):
 		end_hour   = hour_class_map[t_var[j].value + class_lengths[j]//1.0]
 
 	print("{} {}: {}-{}, {}".format(j, course_indices_to_names[j], start_hour, end_hour, get_days(d_var[j,:].value)))
-
