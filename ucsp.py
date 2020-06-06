@@ -124,14 +124,14 @@ class Course:
 	N_HOUR_SLOTS = 11
 	N_80MIN_SLOTS = 7
 
+
 	# Course methods
 	# Initialize from given time/date
-	def __init__(self, new_t:np.array, new_d:np.array, courseType, numberEnrolled, cantOverlap, shouldntOverlap):
-		self.courseType      = courseType
+	def __init__(self, new_t:np.array, new_d:np.array, courseName, numberEnrolled, cantOverlap, shouldntOverlap):
+		self.courseName      = courseName
 		self.numberEnrolled  = numberEnrolled
-		self.cantOverlap     = [] if cantOverlap == "" else cantOverlap.split(";")
-		self.shouldntOverlap = [] if shouldntOverlap == "" else shouldntOverlap.split(";")
-
+		self.cantOverlap     = [] if cantOverlap == "" else [int(idx)-1 for idx in cantOverlap.split(";") if idx != '']
+		self.shouldntOverlap = [] if shouldntOverlap == "" else [int(idx)-1 for idx in shouldntOverlap.split(";") if idx != '']
 		self.td = np.hstack([new_t, new_d])
 
 		if new_t[0] < self.N_HOUR_SLOTS: # t is in the 1.0 hour slots
@@ -140,8 +140,10 @@ class Course:
 			self.t_range = range(self.N_HOUR_SLOTS, self.N_80MIN_SLOTS - (self.td[1] - self.td[0]))
 
 
+
 	def is_valid(self, t):
 		return self.td[0] + t in self.t_range and self.td[1] + t in self.t_range
+
 
 	def perturb(self, d=0, t=0):
 		if t != 0:
@@ -167,11 +169,14 @@ class Course:
 			return
 
 		# Figure out if we are in conflict
-		for key in self.cantOverlap:
+		for idx in self.cantOverlap:
 			i = 0 # safety limit
-			while self.check_conflict(schedule[key]) and i < 10:
-				print("Conflict!")
-				self.perturb(np.random.choice([-1, 1]), 1)
+			
+			is_conflict = self.check_conflict(schedule[idx])
+			
+			while is_conflict and i < 10:
+				
+				self.perturb(np.random.choice([-1, 1]), np.random.choice([-1.1]))
 				i += 1
 
 
@@ -180,26 +185,31 @@ class Course:
 		o1, o2 = otherCourse.td[0], otherCourse.td[1]
 		
 		if max(self.td[2:] + otherCourse.td[2:]) > 1: # days overlap
-			
+
 			if t1 >= self.N_HOUR_SLOTS: # it's an 80min slot
-			# remap it
+				# remap it
 				t1, t2 = self.CONFLICT_MAP[t1][0], self.CONFLICT_MAP[t2][1]
 			
 			if o1 >= self.N_HOUR_SLOTS: # it's an 80min slot
-			# remap it
+				# remap it
 				o1, o2 = self.CONFLICT_MAP[o1][0], self.CONFLICT_MAP[o2][1]
-			
+
 			# now check for conflicts
-			for i in range(t1, t2+1):
-				if i in range(o1, o2+1):
-					return True
+			#for i in range(t1, t2+1):
+			#	if i in range(o1, o2+1):
+			#		print("Conflict: i =", i)
+			# Conflict doesn't occur if:
+			#      t1[   ]t2
+			# o1[   ]o2
+			if not (o1 - t2 >= 0 or t1 - o2 >= 0):
+				return True
 		# No conflicts found
 		return False
 
 	# Make print(course) output a nice human-readable string.
 	def __str__(self) ->str:
 		#print(self.d, self.t)
-		return "{} {} - {}".format(
+		return "{}: {} {} - {}".format(self.courseName,
 			   "".join([self.DAY_NAMES[i] for i in range(5) if self.td[2+i] > 0]), \
 			   self.TIME_NAMES[self.td[0]][0], self.TIME_NAMES[self.td[1]][1]   \
 			   )
@@ -234,7 +244,7 @@ class Ucsp:
 	# Define what counts as non-business hours.
 	ODD_HOURS_INDICES = [8, 9, 10, 16, 17]
 
-	def __init__(self, schedule:typing.Dict[str, Course]):
+	def __init__(self, schedule:[Course]):
 		'''Initialize a new problem'''
 		self.schedule = schedule
 
@@ -248,10 +258,17 @@ class Ucsp:
 
 	def check_feasible(self)->True or False:
 		'''Check whether a schedule is feasible (all hard constraints met)'''
-		for courseName in self.schedule.keys():
-			course = self.schedule[courseName]			# Figure out if we are in conflict
-			for key in course.cantOverlap:
-				if course.check_conflict(self.schedule[key]):
+		for course in self.schedule:
+			for idx in course.cantOverlap:
+				i=0
+				is_conflict = course.check_conflict(self.schedule[idx])
+				
+				# Try to make feasible
+				while is_conflict and i < 10:
+					course.perturb(np.random.choice([-1,1]), np.random.choice([-1,1]))
+					is_conflict = course.check_conflict(self.schedule[idx])
+					i += 1
+				if is_conflict:
 					return False
 
 		# None found
@@ -262,36 +279,35 @@ class Ucsp:
 		softOverlapPenalty = 0.0
 		oddHoursPenalty    = 0.0
 
-		for courseName in self.schedule.keys():
-			course = self.schedule[courseName]			# Figure out if we are in conflict
+		for course in self.schedule:
 			# Check for odd (non-business) hours
 			if course.td[0] in self.ODD_HOURS_INDICES or course.td[1] in self.ODD_HOURS_INDICES:
 				oddHoursPenalty += 1
 			# Check for soft overlap constraint
-			for key in course.shouldntOverlap:
-				if course.check_conflict(self.schedule[key]):
+			for idx in course.shouldntOverlap:
+				if course.check_conflict(self.schedule[idx]):
 					softOverlapPenalty += 1.0
 
 		return softOverlapPenalty*10.0 + oddHoursPenalty*1.0
 
 
 	def get_all_time_vectors(self)->np.array:
-		result = np.empty(len(self.schedule.keys()))
-		for i, courseName in enumerate(self.schedule.keys()):
-			result[i:(i+1)] = self.schedule[courseName].td[0]
+		result = np.empty(len(self.schedule))
+		for i, course in enumerate(self.schedule):
+			result[i:(i+1)] = course.td[0]
 		return result
 
 
 	def add_all_time_vectors(self, v:np.array)->np.array:
-		result = np.empty(len(self.schedule.keys()))
-		for i, courseName in enumerate(self.schedule.keys()):
-			if self.schedule[courseName].is_valid(v[i]):
+		result = np.empty(len(self.schedule))
+		for i, course in enumerate(self.schedule):
+			if course.is_valid(v[i]):
 				#it has to be an integer
-				self.schedule[courseName].perturb(0, int(v[i]))
+				course.perturb(0, int(v[i]))
 			else:
-				self.schedule[courseName].perturb(np.random.choice([-1,0,1]), 0)
+				course.perturb(np.random.choice([-1,0,1]), 0)
 
-			result[i:i+1] = self.schedule[courseName].td[0]
+			result[i:i+1] = course.td[0]
 		return result
 
 
@@ -302,26 +318,26 @@ if __name__ == "__main__":
 	print("Generate a sample (random) schedule from data:")
 	infilename = "data/spring_csv_data.csv"# input("Data file name: ")
 
-	random_schedule = OrderedDict()
+	random_schedule = []
 
 	with open(infilename, "r") as infile:
 		# Use builtin csv reader
 		reader = csv.DictReader(infile)
 		for row in reader:
 			# Exclude TBA classes because they have no timing information
-			random_schedule[row['courseNumber']] = \
+			random_schedule.append( \
 			Course.init_random(float(row['meetingLengthHours']), 
 				               int(row['numberOfMeetings']),
-				               row['courseType'],
+				               row['courseNumber'],
 				               int(row['numberEnrolled']),
 				               row['cantOverlap'],
-				               row['shouldntOverlap'])
+				               row['shouldntOverlap']))
 	
 	ucsp = Ucsp(random_schedule)
-	print("Random schedule is feasible?", feasible)
+	print("Random schedule is feasible?", ucsp.check_feasible())
 	print("Random schedule is good? Penalty:", ucsp.check_desirable())
-	for name in random_schedule.keys():
-		print(name, random_schedule[name])
+	for course in random_schedule:
+		print(course.courseName, course)
 
 	'''print("\nConflict test")
 			# make a deliberately conflict")ing set to test

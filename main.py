@@ -14,7 +14,7 @@ import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
 	print("Initializing some random schedules:")
-	infilename = "data/winter_csv_data.csv"# input("Data file name: ")
+	infilename = input("Data file name: ")
 	
 	file_rows = []
 	with open(infilename, "r") as infile:
@@ -26,32 +26,33 @@ if __name__ == "__main__":
 	N_SAMPLES = 20
 
 	samples = []
-	in_points = np.zeros(N_SAMPLES)
+	in_points = []
 
 	for k in range(N_SAMPLES):
-		random_schedule = dict()	
+		random_schedule = []	
 	
 		for row in file_rows:
 			# Exclude TBA classes because they have no timing information
-			random_schedule[row['courseNumber']] = \
+			random_schedule.append( \
 			Course.init_random(float(row['meetingLengthHours']), 
 			               	int(row['numberOfMeetings']),
-			               	row['courseType'],
+			               	row['courseNumber'],
 			               	int(row['numberEnrolled']),
 			               	row['cantOverlap'],
-			               	row['shouldntOverlap'])
+			               	row['shouldntOverlap']))
 	
 		ucsp = Ucsp(random_schedule)
 		if ucsp.check_feasible():
 			samples.append(ucsp)
-			in_points[k] = ucsp.check_desirable()
+			in_points.append(ucsp.check_desirable())
 
 
 	# Compare the best schedules
 	best_init_idx = np.argmin(in_points)
 	print("Best initial (random) schedule: penalty = ", in_points[best_init_idx])
-	for name in samples[best_init_idx].schedule.keys():
-		print(name, samples[best_init_idx].schedule[name])
+	print(samples[best_init_idx].schedule)
+	for course in samples[best_init_idx].schedule:
+		print(course.courseName, course)
 
 
 	# Define iteration phase
@@ -66,14 +67,14 @@ if __name__ == "__main__":
 				y_best = penalty
 				x_best = sample.get_all_time_vectors()
 			print("Random schedule is good? Penalty:", penalty)
-			sample.v = np.ones(len(sample.schedule.keys()), dtype=int)
+			sample.v = np.ones(len(sample.schedule), dtype=int)
 			sample.x_best = sample.get_all_time_vectors()
 			#for name in sample.schedule.keys():
 				#print(name, sample.schedule[name])
 
 
 		# Iterate
-		n = len(samples[0].schedule.keys())
+		n = len(samples[0].schedule)
 		for k in range(0, k_max):
 			for sample in samples:
 				x = sample.get_all_time_vectors()
@@ -168,5 +169,5 @@ if __name__ == "__main__":
 	# Compare the best schedules
 	best_final_idx = np.argmin(out_points)
 	print("Best final schedule: penalty = ", out_points[best_final_idx])
-	for name in samples[best_final_idx].schedule.keys():
-		print(name, samples[best_final_idx].schedule[name])
+	for course in samples[best_final_idx].schedule:
+		print(course.courseName, course)
