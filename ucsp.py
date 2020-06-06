@@ -2,12 +2,11 @@
 # Tested on   : Python 3.7.4
 # Author(s)   : Emiko Soroka,
 # Unittests   : None
-# Description :
-# Course scheduling problem implementation
+# Description : Course scheduling problem implementation.
 
 import numpy as np
 import typing, csv
-from collections import OrderedDict
+
 # We have two types of timeslots: hour and 1.5-hour.
 # A course consists of one or more indices [i:j] into this schedule
 
@@ -53,11 +52,12 @@ from collections import OrderedDict
 
 class Course:
 
-	# Initialize a course "randomly" within constraints
-	# Guaranteed to produce a feasible sample
 	@staticmethod
 	def init_random(meetingLength, nMeetings, *args):
-
+		'''Initialize a course "randomly" within constraints.
+ Guaranteed to produce a feasible sample: e.g. one within acceptable time range
+ and with acceptable days (MW, not MTu, etc.).
+'''
 		time_range  = [0,]
 		base_length = 0.0
 
@@ -99,7 +99,9 @@ class Course:
 
 		return Course(np.array([t1,t2], dtype=int), d, *args)
 
-	# Some static data
+	
+	# Some static data to help with pretty-printing.
+	
 	TIME_NAMES = [
 	[" 9:00a","10:00a",],
 	["10:00a","11:00a",],
@@ -126,8 +128,17 @@ class Course:
 
 
 	# Course methods
-	# Initialize from given time/date
+	
 	def __init__(self, new_t:np.array, new_d:np.array, courseName, numberEnrolled, cantOverlap, shouldntOverlap):
+		'''Initialize from given data.
+new_t: Start and end time as array in R2.
+new_d: Days as array in R5.
+courseName: human-readable string such as "AA 222".
+numberEnrolled: integer enrollment count. (Not used but maybe later, if we have time?)
+cantOverlap: string (we'll process it here!) of sorted overlap indices: e.g. "5;6"
+means this class can't overlap with courses at indices 5 or 6.
+shouldntOverlap: same as cantOverlap but for soft overlap constraint (not hard).
+'''
 		self.courseName      = courseName
 		self.numberEnrolled  = numberEnrolled
 		self.cantOverlap     = [] if cantOverlap == "" else [int(idx)-1 for idx in cantOverlap.split(";") if idx != '']
@@ -142,10 +153,22 @@ class Course:
 
 
 	def is_valid(self, t):
+		'''Check if a course has a valid time range.
+Example: if the valid times are 8am - 7pm and the course is at 8pm, is_valid returns False.
+Does not check for overlaps.
+'''
 		return self.td[0] + t in self.t_range and self.td[1] + t in self.t_range
 
 
 	def perturb(self, d=0, t=0):
+		'''Perturb this course.
+If d != 0, attempt to perturb the course days.
+(This won't have any effect if the course is 3 days per week, since
+the only option for those courses is MWF.
+If t != 0, attempt to perturb the course time.
+This won't push the course time outside the allowable range.
+(e.g. if the last allowable time is 7pm, t=1 won't push it to 8pm.)
+'''
 		if t != 0:
 			
 			if self.is_valid(t):
@@ -164,7 +187,13 @@ class Course:
 			
 
 	def make_feasible(self, schedule):
-		# No constraints
+		'''Attempt to make the placement of this course within a schedule
+(list of other courses) feasible. If we find an overlap,
+we try to fix it by randomly perturbing one of the overlapping classes.
+This method can silently fail to make the schedule feasible.
+You should check_feasible() after running it..
+'''
+		# No overlap constraints on this 
 		if self.cantOverlap == []:
 			return
 
@@ -181,6 +210,9 @@ class Course:
 
 
 	def check_conflict(self, otherCourse):
+		'''Check whether another course conflicts with self.
+To conflict means otherCourse has at least overlapping day AND time.
+'''
 		t1, t2 = self.td[0], self.td[1]
 		o1, o2 = otherCourse.td[0], otherCourse.td[1]
 		
@@ -195,12 +227,10 @@ class Course:
 				o1, o2 = self.CONFLICT_MAP[o1][0], self.CONFLICT_MAP[o2][1]
 
 			# now check for conflicts
-			#for i in range(t1, t2+1):
-			#	if i in range(o1, o2+1):
-			#		print("Conflict: i =", i)
 			# Conflict doesn't occur if:
-			#      t1[   ]t2
-			# o1[   ]o2
+			#      t1[   ]t2     t1 - o2 >= 0.0
+			# o1[   ]o2      or: t2 - o1 >= 0.0
+			# 
 			if not (o1 - t2 >= 0 or t1 - o2 >= 0):
 				return True
 		# No conflicts found
@@ -208,13 +238,14 @@ class Course:
 
 	# Make print(course) output a nice human-readable string.
 	def __str__(self) ->str:
-		#print(self.d, self.t)
-		return "{}: {} {} - {}".format(self.courseName,
+
+		return "{}: {} {} - {}".format( \
+			   self.courseName,
 			   "".join([self.DAY_NAMES[i] for i in range(5) if self.td[2+i] > 0]), \
 			   self.TIME_NAMES[self.td[0]][0], self.TIME_NAMES[self.td[1]][1]   \
 			   )
 
-
+	# Map conflicts from 1.5 hour indices (11 - 17) to 1 hour indices (0 - 10)
 	CONFLICT_MAP = {
 	11:[0,1],
 	12:[1,2],
@@ -224,22 +255,12 @@ class Course:
 	16:[7,8],
 	17:[9,10],
 	}
-# Conflict matrix (is this useful?)
-#  0 1 2 3 4 5 6 7 8 9 1011121314151617
-# [1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0] # 9a 1.0 conflicts with 9a 1.5
-# [0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0] # 10a 1.0 conflicts with 9a 1.5
-# [0 1 0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0] # 10a 1.0 conflicts with 10:30a 1.5
-# [0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0] # 11a 1.0 conflicts with 10:30a 1.5
-# [0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0 0] # 12p 1.0 conflicts with 12p 1.5
-# [0 0 0 0 1 0 0 0 0 0 0 0 0 1 0 0 0 0] # 1p 1.0 conflicts with 12p 1.5
-# [0 0 0 0 1 0 0 0 0 0 0 0 0 0 1 0 0 0] # 1p 1.0 conflicts with 1:30p 1.5
-# [0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 0 0 0] # 2p 1.0 conflicts with 1:30p 1.5
-# [0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 0 0] # 3p 1.0 conflicts with 3p 1.5
-# [0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0 0] # 4p 1.0 conflicts with 3p 1.5
-# [0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 0 1 0] # 4p 1.0 conflicts with 4:30p 1.5
-# [0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1 0] # 5p 1.0 conflicts with 4:30p 1.5
-# [0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 0 1] # 6p 1.0 conflicts with 6p 1.5
-# [0 0 0 0 0 0 0 0 0 0 1 0 0 0 0 0 0 1] # 7p 1.0 conflicts with 6p 1.5
+
+
+
+# The UCSP consists of a list of Courses which make up a Schedule.
+# It has methods to check whether the Schedule is feasible
+# and to perturb the courses in the hopes of making an infeasible Schedule feasible.
 class Ucsp:
 	# Define what counts as non-business hours.
 	ODD_HOURS_INDICES = [8, 9, 10, 16, 17]
