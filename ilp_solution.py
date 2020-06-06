@@ -13,18 +13,16 @@ import csv
 #    Test data setup    #
 #  #  #  #  #  #  #  #  #
 
-infilename = "data/winter_csv_data.csv"# input("Data file name: ")
+infilename = input("Data file name: ")
 
 
 class_lengths       = []
 class_block_types   = []
 class_day_types     = []
-hard_overlap_groups_names = []
-soft_overlap_groups_names = []
+hard_overlap_groups = []
+soft_overlap_groups = []
 
-# We need the order of course names
-# to replace the course names in the overlap groups with indices
-course_names_to_indices = {}
+# We need the order of course names to enable nice printing at the end
 course_indices_to_names = {}
 
 infile = open(infilename, "r")
@@ -35,17 +33,17 @@ for i, row in enumerate(reader):
 	class_day_types.append(int(row['numberOfMeetings']))
 	
 	# Retrieve the soft constraint group
-	soft_group = [g for g in row['shouldntOverlap'].split(";") if g != "" and g]
+	soft_group = [int(g) for g in row['shouldntOverlap'].split(";") if g != "" and g]
 	if [] != soft_group:
 		# Don't forget to add this class to the group!
-		soft_group.append(row['courseNumber'])
-		soft_overlap_groups_names.append(soft_group)
+		soft_group.append(int(row['dataNumber']))
+		soft_overlap_groups.append(soft_group)
 
 	# Retrieve the hard constraint group
-	hard_group = [g for g in row['cantOverlap'].split(";") if g != ""]
+	hard_group = [int(g) for g in row['cantOverlap'].split(";") if g != ""]
 	if [] != hard_group:
-		hard_group.append(row['courseNumber'])
-		hard_overlap_groups_names.append(hard_group)
+		hard_group.append(int(row['dataNumber']))
+		hard_overlap_groups.append(hard_group)
 
 	# Handle the meetingLength
 	meetingLength = float(row['meetingLengthHours'])
@@ -60,27 +58,10 @@ for i, row in enumerate(reader):
 	class_lengths.append(int(meetingLength))
 
 	# Save the course name
-	course_names_to_indices[row['courseNumber']] = i
 	course_indices_to_names[i] = row['courseNumber']
 
 # Close file
 infile.close()
-
-# Now we need to translate the overlap groups, which have course names,
-# into indices
-def group_name_to_index(groups):
-	index_group = []
-	for group in groups:
-		name1 = group[0]
-		tmp = [course_names_to_indices[name1],]
-		for name in group[1:]:
-			tmp.append(course_names_to_indices[name])
-		tmp.sort()
-		index_group.append(tmp)
-	return index_group
-
-hard_overlap_groups = group_name_to_index(hard_overlap_groups_names)
-soft_overlap_groups = group_name_to_index(soft_overlap_groups_names)
 
 
 
