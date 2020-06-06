@@ -106,16 +106,6 @@ def penalty(t_var):
 					overlap_p += cvx.maximum(c2_start - c1_start + class_lengths[idx_2], \
 										 c1_start - c2_start + class_lengths[idx_1], \
 										 cvx.max(d1 + d2) - 1)
-	# For the class to NOT overlap
-	# ANY of these constraints may hold
-	# so for the class to overlap, ALL must fail
-	# which means
-	# 0 >= c2_start - c1_start + class_lengths[idx_2] fails, is pos.
-	# 0 >= c1_start - c2_start + class_lengths[idx_1] fails, is pos.
-	# 0 >= cvx.max(d1 + d2) - 1 fails, is pos.
-	#constraints.append(c1_start - c2_start >= class_lengths[idx_2] + overlap_ij[0]*-10)
-	#constraints.append(c2_start - c1_start >= class_lengths[idx_1] + overlap_ij[1]*-10)
-	#constraints.append(cvx.max(d1 + d2) <= 1 + 5*overlap_ij[2])
 
 	# Third. Penalize classes occurring at lunchtime.
 	# TODO. (lower priority)
@@ -209,8 +199,25 @@ problem.solve(solver = cvx.GLPK_MI)
 print("GLPK finished with status", problem.status)
 
 
+# Interpret the results
+hour_class_map = {1:"8:00", 2:"9:00", 3:"10:00", 4:"11:00", 5:"12:00", \
+                  6:"13:00", 7:"14:00", 8:"15:00", 9:"16:00", 10:"17:00", \
+                  11:"18:00", 12:"19:00"}
+hour_5_class_map = {1:"9:00", 2:"10:30", 3:"12:00", 4:"1:30", \
+                    5:"3:00", 6:"4:30", 7:"6:00"}
+
+def get_days(d)->str:
+	day_names = ["M","Tu","W","Th","F"]
+	return "".join([day_names[i] for i in range(D) if 1 == d[i]])
+
 for j in range(J):
-	print("Class {} : time {}".format(j, t_var[j].value))
-	for d in range(D):
-		print(d_var[j,d].value)
+	hour = ""
+	if 1.5 == class_block_types[j]:
+		start_hour = hour_5_class_map[t_var[j].value]
+		end_hour   = hour_5_class_map[t_var[j].value + class_lengths[j]//1.5]
+	else:
+		start_hour = hour_class_map[t_var[j].value]
+		end_hour   = hour_class_map[t_var[j].value + class_lengths[j]//1.0]
+
+	print("Class {}. time: {}-{}, days: {}".format(j, start_hour, end_hour, get_days(d_var[j,:].value)))
 
