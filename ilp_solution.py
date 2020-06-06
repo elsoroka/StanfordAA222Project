@@ -17,8 +17,10 @@ class_block_types = [1.5, 1, 1.5, 1] # class is in 1.5 hour or 1 hour blocks
 class_day_types   = [2, 3, 2, 1]
 
 J = len(class_lengths) # Number of classes
-print("J", J)
+
 hard_overlap_groups = [[0,2,3],]
+
+soft_overlap_groups = [[1,2,],]
 
 
 # Solver setup
@@ -59,9 +61,11 @@ t_var = cvx.Variable(J, integer=True)
 constraints = []
 
 
-# Penalty function
+# OBJECTIVE - Penalty function
+
 def penalty(t_var):
-	time_p = 0.0; overlap_p = 0.0
+	time_p = 0.0; overlap_p = 0.0; lunchtime_p = 0.0
+	
 	# First: Penalize classes at bad times
 	for j in range(J):
 		if 1.5 == class_block_types[j]:
@@ -74,11 +78,56 @@ def penalty(t_var):
 		else: 
 			time_p += cvx.pos(t_var[j] - BUSINESS_HOURS_END_1_5)
 			time_p += cvx.pos(BUSINESS_HOURS_START_1_0 - t_var[j])
+	
 	# Second, Penalize classes overlapping in soft groups
+	for group in soft_overlap_groups:
+		for i in group:
+			for j in group:
+				if j > i: # avoid double penalty, e.g. 1<->2, 2<->1
+					print("Penalizing {}, {}".format(i, j))
+					idx_1 = i; idx_2 = j;
+					# code reuse, beware
+					c1_start = t_var[idx_1]
+					c2_start = t_var[idx_2]
+					d1 = d_var[idx_1,:]
+					d2 = d_var[idx_2,:]
 
-	return time_p
+					# handle the constraint between a 1.5 hour and 1 hour class
+					if 1.5 == class_block_types[idx_1] and 1.0 == class_block_types[idx_2]:
+						# Convert to 1 hour overlap
+						c1_start = c1_start + 1 + (c1_start-1)/2
 
+					elif 1.5 == class_block_types[idx_2] and 1.0 == class_block_types[idx_1]:
+						# Convert to 1 hour overlap
+						c2_start = c2_start + 1 + (c2_start-1)/2
+
+
+					# Add the penalty
+					overlap_p += cvx.maximum(c2_start - c1_start + class_lengths[idx_2], \
+										 c1_start - c2_start + class_lengths[idx_1], \
+										 cvx.max(d1 + d2) - 1)
+	# For the class to NOT overlap
+	# ANY of these constraints may hold
+	# so for the class to overlap, ALL must fail
+	# which means
+	# 0 >= c2_start - c1_start + class_lengths[idx_2] fails, is pos.
+	# 0 >= c1_start - c2_start + class_lengths[idx_1] fails, is pos.
+	# 0 >= cvx.max(d1 + d2) - 1 fails, is pos.
+	#constraints.append(c1_start - c2_start >= class_lengths[idx_2] + overlap_ij[0]*-10)
+	#constraints.append(c2_start - c1_start >= class_lengths[idx_1] + overlap_ij[1]*-10)
+	#constraints.append(cvx.max(d1 + d2) <= 1 + 5*overlap_ij[2])
+
+	# Third. Penalize classes occurring at lunchtime.
+	# TODO. (lower priority)
+
+	# ADJUST RELATIVE WEIGHTS HERE
+	return 1 * time_p + 1 * lunchtime_p + 10 * overlap_p
+
+# Set objective
 objective = cvx.Minimize(penalty(t_var))
+
+
+# CONSTRAINTS
 
 for j in range(J):
 	# Add constraints on class start/end times
