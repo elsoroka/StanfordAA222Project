@@ -1,15 +1,15 @@
-dept,courseNumber,courseType,numberOfMeetings,meetingLengthHours,numberEnrolled,cantOverlap,shouldntOverlap
-AA,AA 203,LEC,2,1.5,103,,AA 273
-AA,AA 204,LEC,2,1.5,31,,
-AA,AA 218,LEC,2,1.5,18,,
-AA,AA 222,LEC,2,1.5,83,,AA 203;AA 273
-AA,AA 252,LEC,1,3.0,43,,
-AA,AA 257,LEC,2,1.5,4,,
-AA,AA 273,LEC,2,1.5,74,,AA 203
-AA,AA 279B,LEC,2,1.5,23,AA 279D,
-AA,AA 279D,LEC,3,1.5,14,AA 279B,
-AA,AA 294,COL,1,1.5,21,,
-AA,AA 109Q,ISS,3,1.5,17,,
-AA,AA 119N,ISF,2,1.0,12,,
-AA,AA 146B,LAB,2,1.5,3,,
-AA,AA 173,LEC,2,1.0,11,,
+dept,courseNumber,courseType,numberOfMeetings,meetingLengthHours,numberEnrolled,cantOverlap,shouldntOverlap,dataNumber
+AA,AA 203,LEC,2,1.5,103,,,1
+AA,AA 204,LEC,2,1.5,31,,,2
+AA,AA 218,LEC,2,1.5,18,,,3
+AA,AA 222,LEC,2,1.5,83,,1;7,4
+AA,AA 252,LEC,1,3.0,43,,,5
+AA,AA 257,LEC,2,1.5,4,,,6
+AA,AA 273,LEC,2,1.5,74,,,7
+AA,AA 279B,LEC,2,1.5,23,,,8
+AA,AA 279D,LEC,3,1.5,14,8,,9
+AA,AA 294,COL,1,1.5,21,,,10
+AA,AA 109Q,ISS,3,1.5,17,,,11
+AA,AA 119N,ISF,2,1.0,12,,,12
+AA,AA 146B,LAB,2,1.5,3,,,13
+AA,AA 173,LEC,2,1.0,11,,,14
