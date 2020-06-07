@@ -11,14 +11,14 @@ import csv
 import numpy as np
 
 def check_overlap(row1, row2)->True or False:
-	d1 = [int(d) for d in row1['dayCode']]
-	d2 = [int(d) for d in row2['dayCode']]
-
+	d1 = np.array([int(d) for d in row1['dayCode']])
+	d2 = np.array([int(d) for d in row2['dayCode']])
+	
 	# Remember the overlap happens if NONE of these hold.
 	return not any([
 		int(row1['startTime']) - int(row2['endTime']) >= 0,
 		int(row2['startTime']) - int(row1['endTime']) >= 0,
-		np.max(d1 + d2) <= 1,
+		np.max(np.add(d1, d2)) <= 1,
 		])
 
 
@@ -44,14 +44,13 @@ if __name__ == "__main__":
 		for other_idx in hard_group:
 
 			# A course overlapping itself doesn't count
-			if i != other_idx and check_overlap(rows[i], rows[other_idx]):
+			if check_overlap(rows[i], rows[other_idx]):
 				print("ERROR: ", rows[i], " conflicts with ", rows[other_idx])
 				violation_count += 1
 
 		# Check the soft overlap groups
 		for other_idx in soft_group:
-
-			if i != other_idx and check_overlap(rows[i], rows[int(other_idx)]):
+			if check_overlap(rows[i], rows[int(other_idx)]):
 				overlap_count += 1
 
 	print("Hard group violations:", violation_count)
