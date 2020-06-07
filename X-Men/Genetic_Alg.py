@@ -47,11 +47,7 @@ def main():
     plt.ylabel('score')
     plt.show()
     '''
-
-
-    
 class GenAlg:
-
     def __init__(self,K_max=1000,m=1000,mutation_rt=30):
         self.K_max = K_max #max iteration
         self.POP_size = m
@@ -65,8 +61,6 @@ class GenAlg:
         end time(in military)
         '''
         self.options = dictionary.options_dict()
-
-
     def init_POP(self):
         self.POP = []
         for p in range(self.POP_size):
@@ -75,7 +69,6 @@ class GenAlg:
                 pop_p[len(pop_p):] = rnd_ass(self.courses[2][c])
                 
             self.POP[len(self.POP):]=[pop_p]
-
     def NXT_GEN(self):
         plt.figure()
         for k in range(self.K_max):
@@ -109,8 +102,6 @@ class GenAlg:
         plt.xlabel('iteration')
         plt.ylabel('score')
         plt.show()
-        
-
     def obj(self,POP_single): #fix later
         score = 0
         overlap = 150
@@ -132,7 +123,6 @@ class GenAlg:
             if 1200 in range(self.options[POP_single[i]][3],self.options[POP_single[i]][4]):
                 score+=lunch
         return score
-
     def selection(self,last=0): 
         '''Truncation'''
         m = self.POP_size
@@ -150,7 +140,6 @@ class GenAlg:
             for ii in range(int(m/2)):
                 parents[len(parents):] = [self.POP[key[ii]]]       
         return parents
-
     def cross_over(self,a_par, b_par):
         child = []
         for i in range(self.num_courses):
@@ -159,7 +148,6 @@ class GenAlg:
             else:
                 child.append(b_par[i]) 
         return child
-
     def mutant(self,child):
         '''Bit Wise mutation'''
         muts = self.muts #mutation rate
@@ -169,7 +157,6 @@ class GenAlg:
                 if randint.rvs(0,100,size = 1)<muts:
                     child[pop][clss] = rnd_ass(self.courses[2][clss])[0]
         return child
-
     def plot_sched(self):
         
         print('done')
@@ -177,7 +164,6 @@ class GenAlg:
         print(self.POP[0])
         
         return self.strt_score,self.fin_score
-
 def rnd_ass(cls_len):
     if cls_len <= 50:
         return randint.rvs(0,29,size = 1)
@@ -198,7 +184,6 @@ def rnd_ass(cls_len):
     else:
         print('error,',cls_len,'min not accounted for')
         return randint.rvs(1000,1001,size = 1)
-
 def load_dataset(csv_path):
     """Load dataset from a CSV file.
     Args:
