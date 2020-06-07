@@ -8,11 +8,13 @@ from scipy.stats import cauchy
 from scipy.stats import randint
 import matplotlib.pyplot as plt 
 import dictionary
+import csv
+
 
 
 def main():
     k_max = 200
-    pop_size = 400 #must be an even number
+    pop_size = 200 #must be an even number
     muts = 50
     
     schedule = GenAlg(K_max=k_max,m=pop_size,mutation_rt=muts)  
@@ -51,7 +53,7 @@ class GenAlg:
     def __init__(self,K_max=1000,m=1000,mutation_rt=30):
         self.K_max = K_max #max iteration
         self.POP_size = m
-        self.courses = load_dataset('spring_2020_AA.csv')
+        self.courses = load_dataset('spring_csv_data_small.csv')
         self.num_courses = len(self.courses[0])
         self.muts = mutation_rt
         '''
@@ -105,7 +107,7 @@ class GenAlg:
     def obj(self,POP_single): #fix later
         score = 0
         overlap = 150
-        early = 50
+        early = 100
         late = 75
         lunch = 10
         check = []
@@ -186,25 +188,31 @@ def rnd_ass(cls_len):
         return randint.rvs(1000,1001,size = 1)
 def load_dataset(csv_path):
     """Load dataset from a CSV file.
-    Args:
-         csv_path: Path to CSV file containing dataset.
-    Returns:
-        Course List
+    Args: csv_path: Path to CSV file containing dataset.
+    Returns: Course List
     """
-    # Load headers
+    file_rows = []
     with open(csv_path, 'r') as csv_fh:
-        headers = csv_fh.readline().strip().split(',')
-    # Load features and labels
-    dept_cols = [i for i in range(len(headers)) if headers[i].startswith('a')]
-    course_cols = [i for i in range(len(headers)) if headers[i].startswith('b')]
-    MpW_cols = [i for i in range(len(headers)) if headers[i].startswith('f')]
-    #dept = np.loadtxt(csv_path,dtype=str, delimiter=',', skiprows=1, usecols=dept_cols)
-    #Course = np.loadtxt(csv_path, dtype=str, delimiter=',', skiprows=1, usecols=course_cols)
-    #MinpW = np.loadtxt(csv_path, delimiter=',', skiprows=1, usecols=MpW_cols)
-    #fix with working file reader, this is valid for aa spring 2020
-    Course_List = [['AA','AA','AA','AA','AA','AA','AA','AA','AA','AA','AA','AA','AA','AA'],
-    ['203','204','218','222','252','257','273','279B','279D','294','109Q','119N','146B','173'],
-    [160,160,160,160,170,160,160,160,240,80,240,100,160,100]]
+        reader = csv.DictReader(csv_fh)
+        for row in reader:
+            file_rows.append(row)
+
+    dept = []
+    name = []
+    length = []
+    cant = []
+    shouldnt = []
+    numb = []
+
+    for i in range(len(file_rows)):
+        dept.append(file_rows[i]['dept'])
+        name.append(file_rows[i]['courseNumber'])
+        length.append(int(file_rows[i]['timeMinPweek']))
+        cant.append(file_rows[i]['cantOverlap'])
+        shouldnt.append(file_rows[i]['shouldntOverlap'])
+        numb.append(file_rows[i]['dataNumber'])
+
+    Course_List = [dept,name,length,cant,shouldnt,numb]
     return Course_List
 
 if __name__ == '__main__':

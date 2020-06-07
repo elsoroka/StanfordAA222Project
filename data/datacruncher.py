@@ -1,9 +1,11 @@
+ 
 # File created: 05/18/2020
 # Tested on   : Python 3.7.4
 # Author      : Emiko Soroka
 # Unittests   : None
-# Description:
+# Description :
 # Quick hack to ingest JSON data and spit out CSV files, will extend later
+# How to use  : Run file. Enter input JSON file when prompted and output CSV file name when prompted.
 
 import json
 
@@ -39,7 +41,7 @@ def parseJsonData(infile, outfile):
 		# (if timeisTBA is true, there will be 0 meetings of 0 length)
 		# and number enrolled
 		# This makes the header row
-		outfile.write("a_dept, b_number, c_type, d_numberOfMeetings, e_lengthMin, f_MinperWeek, g_isTba, h_numberEnrolled\r\n")
+		outfile.write("dept,courseNumber,courseType,numberOfMeetings,meetingLengthmin,timeMinPweek,numberEnrolled,cantOverlap,shouldntOverlap\n")
 		
 		rawData = json.load(infile)
 		for divisionName in rawData.keys(): # iterate over division (grad/undergrad etc)
@@ -67,22 +69,20 @@ def writeCourseToFile(course, outfile):
 			# If section is not TBA (there is a time and date associated with it)
 			if not meeting['timeIsTBA']:
 				# Count the hours per MEETING
-				timeMinutes = (meeting['endTime'] - meeting['startTime'])
+				timeHours = (meeting['endTime'] - meeting['startTime'])
 				# Count the DAYS per week this class meets
 				numMeetings = len(meeting['days'])
-				timeMinperWeek = timeMinutes * numMeetings
-
-			# Write as a CSV string
-			outfile.write(",".join([
-				course['department'],
-				course['courseNumber'],
-				section['courseType'],
-				str(numMeetings),
-				str(timeMinutes),
-				str(timeMinperWeek),
-				str(meeting['timeIsTBA']),
-				str(section['enrolled'])
-				]) + "\n")
+				timeMinPweek = numMeetings*timeHours
+				# Write as a CSV string
+				outfile.write(",".join([
+					course['department'],
+					course['courseNumber'].rstrip(":"), # remove these stray :
+					section['courseType'],
+					str(numMeetings),
+					str(timeHours),
+					int(timeMinPweek),
+					str(section['enrolled']),
+					"",""]) + "\n")
 
 
 if __name__ == "__main__":
