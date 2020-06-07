@@ -11,7 +11,15 @@ import dictionary
 
 
 def main():
-
+    k_max = 200
+    pop_size = 400 #must be an even number
+    muts = 50
+    
+    schedule = GenAlg(K_max=k_max,m=pop_size,mutation_rt=muts)  
+    schedule.init_POP()
+    schedule.NXT_GEN() 
+    start,end = schedule.plot_sched()
+    '''
     k_max = 100
     pop_size = np.array([2, 10, 100, 250, 500,750, 1000]) #must be an even number
     muts = 30
@@ -31,7 +39,7 @@ def main():
     plt.xlabel('Population Size')
     plt.ylabel('score')
     plt.show()
-    '''
+
     plt.figure(1)
     plt.plot(muts, start, 'ro', linewidth=2)
     plt.plot(muts, end, 'ko', linewidth=2)
@@ -39,6 +47,7 @@ def main():
     plt.ylabel('score')
     plt.show()
     '''
+
 
     
 class GenAlg:
@@ -68,12 +77,14 @@ class GenAlg:
             self.POP[len(self.POP):]=[pop_p]
 
     def NXT_GEN(self):
+        plt.figure()
         for k in range(self.K_max):
             parents = self.selection()
             '''
             if k%10==0:
                 print(self.obj(parents[0]))
             '''
+            plt.plot(k,self.obj(parents[0]),'ro')
             if k == 0:
                 self.strt_score = self.obj(parents[0])
             if self.obj(parents[0]) == 0:
@@ -94,6 +105,11 @@ class GenAlg:
             self.POP = self.mutant(children)
         self.POP = self.selection(last=1)
         self.fin_score = self.obj(self.POP[0])
+        plt.plot(self.K_max,self.obj(self.POP[0]),'ro')
+        plt.xlabel('iteration')
+        plt.ylabel('score')
+        plt.show()
+        
 
     def obj(self,POP_single): #fix later
         score = 0
@@ -158,7 +174,7 @@ class GenAlg:
         
         print('done')
         print(self.strt_score,self.fin_score)
-        #print(self.POP[0])
+        print(self.POP[0])
         
         return self.strt_score,self.fin_score
 
