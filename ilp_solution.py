@@ -110,7 +110,8 @@ constraints = []
 # OBJECTIVE - Penalty function
 
 def penalty(t_var):
-	time_p = 0.0; overlap_p = 0.0; lunchtime_p = 0.0; fri_class_p = 0.0;
+	time_p = 0.0; overlap_p = 0.0; lunchtime_p = 0.0
+	fri_class_p = 0.0; mon_class_p = 0.0
 	
 	# First: Penalize classes at bad times
 	for j in range(J):
@@ -125,10 +126,11 @@ def penalty(t_var):
 			time_p += cvx.pos(t_var[j] - BUSINESS_HOURS_END_1_5)
 			time_p += cvx.pos(BUSINESS_HOURS_START_1_0 - t_var[j])
 		
-		# penalty for Friday classes
+		# penalty for Friday and Monday classes
 		# promotes MW and TuTh over WF for 2-days-per-week classes
-		fri_class_p += d_var[j,-1]
-	
+#		fri_class_p += d_var[j,-1]
+#		mon_class_p += d_var[j,:] - d_var[j,:]
+
 	# Second, Penalize classes overlapping in soft groups
 	for group in soft_overlap_groups:
 		for i in group:
@@ -169,10 +171,33 @@ def penalty(t_var):
 					cvx.pos(c1_start + class_lengths[j] - c2_start - (cvx.min(-d1 + -d2) + 2))
 					
 	# Third. Penalize classes occurring at lunchtime.
-	# TODO. (lower priority)
+	# Implemented with:
+	# Fourth. Penalize classes "bunched together" in time. e.g. all in the morning.
+	# This is necessary to spread the classes throughout the day.
+	# Use the idea that each class is slightly "attracted to" a random "good" time.
+	# That should spread them out.
+	# While we're at it, don't "attract" courses to lunchtime spots.
+	BEST_1_5_SPOTS = [1,2,4,5]*((J+3)//4)
+	BEST_1_0_SPOTS = [2,3,4,6,7,8]*((J+5)//6)
+
+	cluster_penalty = 0.0
+	for j in range(J):
+		if 1.5 == class_block_types[j]:
+			cluster_penalty += cvx.abs(t_var[j] - np.random.choice(BEST_1_5_SPOTS, replace=False))
+		else:
+			cluster_penalty += cvx.abs(t_var[j] - np.random.choice(BEST_1_0_SPOTS, replace=False))
+
+	# Fifth. Promote spreading courses out over the week, e.g. not clustered on a single day.
+	
+	# Averaging term - total number of course meetings / total days
+	AVG_MEETINGS_PER_DAY = np.sum(class_day_types)/D
+	# spread in days
+	day_spread = 0
+	for d in range(D):
+		day_spread += cvx.pos(cvx.sum(d_var[:,d]) - AVG_MEETINGS_PER_DAY)
 
 	# ADJUST RELATIVE WEIGHTS HERE
-	return 1 * time_p + 1 * lunchtime_p + 10 * overlap_p + 1 * fri_class_p
+	return 1 * time_p + 10 * overlap_p + day_spread*1 + cluster_penalty*2.0
 
 # Set objective
 objective = cvx.Minimize(penalty(t_var))
@@ -279,23 +304,28 @@ print("GLPK finished with status", problem.status)
 print("Penalty: ", problem.value)
 
 # Interpret the results
-hour_class_map = {1:"8:00", 2:"9:00", 3:"10:00", 4:"11:00", 5:"12:00", \
-                  6:"13:00", 7:"14:00", 8:"15:00", 9:"16:00", 10:"17:00", \
-                  11:"18:00", 12:"19:00"}
-hour_5_class_map = {1:"9:00", 2:"10:30", 3:"12:00", 4:"1:30", \
-                    5:"3:00", 6:"4:30", 7:"6:00"}
+hour_class_map = {1:("8:00",0), 2:("9:00",2), 3:("10:00",4), 4:("11:00",6), 5:("12:00",8), \
+                  6:("13:00",10), 7:("14:00",12), 8:("15:00",14), 9:("16:00",16), \
+                  10:("17:00",18), 11:("18:00",20), 12:("19:00",22)}
+hour_5_class_map = {1:("9:00",2), 2:("10:30",5), 3:("12:00",8), 4:("1:30",11), \
+                    5:("3:00",14), 6:("4:30",17), 7:("6:00",21), 8:("7:30",24)}
+
 
 def get_days(d)->str:
 	day_names = ["M","Tu","W","Th","F"]
 	return "".join([day_names[i] for i in range(D) if 1 == d[i]])
 
+# Print the header and data
+print("number,courseName,timeString,dayString,startTime,endTime,dayCode")
 for j in range(J):
 	hour = ""
 	if 1.5 == class_block_types[j]:
-		start_hour = hour_5_class_map[t_var[j].value]
-		end_hour   = hour_5_class_map[t_var[j].value + class_lengths[j]//1.5]
+		start_hour, start_code = hour_5_class_map[t_var[j].value]
+		end_hour, end_code   = hour_5_class_map[t_var[j].value + class_lengths[j]//1.5]
 	else:
-		start_hour = hour_class_map[t_var[j].value]
-		end_hour   = hour_class_map[t_var[j].value + class_lengths[j]//1.0]
+		start_hour, start_code = hour_class_map[t_var[j].value]
+		end_hour, end_code   = hour_class_map[t_var[j].value + class_lengths[j]//1.0]
 
-	print("{} {}: {}-{}, {}".format(j, course_indices_to_names[j], start_hour, end_hour, get_days(d_var[j,:].value)))
+	print("{},{}, {}-{}, {},{},{},{}".format(j, course_indices_to_names[j], \
+		                                   start_hour, end_hour, get_days(d_var[j,:].value), \
+		                                   start_code, end_code, "".join([str(int(d)) for d in d_var[j,:].value])))
