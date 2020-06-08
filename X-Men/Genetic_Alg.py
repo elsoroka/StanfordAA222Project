@@ -9,19 +9,29 @@ from scipy.stats import randint
 import matplotlib.pyplot as plt 
 import dictionary
 import csv
+import time
 
-
-
-def main():
-    k_max = 200
-    pop_size = 200 #must be an even number
-    muts = 50
-    
-    schedule = GenAlg(K_max=k_max,m=pop_size,mutation_rt=muts)  
+def Optimize_Small():
+    t = time.process_time()
+    k_max = 800
+    pop_size = 500 #must be an even number
+    muts = 60
+    schedule = GenAlg(K_max=k_max,m=pop_size,mutation_rt=muts,data='spring_csv_data_small.csv')  
     schedule.init_POP()
     schedule.NXT_GEN() 
     start,end = schedule.plot_sched()
-    '''
+    print((time.process_time()-t)/60)
+def Optimize_Large():
+    t = time.process_time()
+    k_max = 60
+    pop_size = 40 #must be an even number
+    muts = 60
+    schedule = GenAlg(K_max=k_max,m=pop_size,mutation_rt=muts,data='Engineering_spring_2020_small.csv')  
+    schedule.init_POP()
+    schedule.NXT_GEN() 
+    start,end = schedule.plot_sched()
+    print((time.process_time()-t)/60)
+def plotss():
     k_max = 100
     pop_size = np.array([2, 10, 100, 250, 500,750, 1000]) #must be an even number
     muts = 30
@@ -30,7 +40,7 @@ def main():
     end = np.zeros((pts,1))
     it = range(0,pts,1)
     for i in range(pts):
-        schedule = GenAlg(K_max=k_max,m=pop_size[i],mutation_rt=muts)  
+        schedule = GenAlg(K_max=k_max,m=pop_size[i],mutation_rt=muts,data='spring_csv_data_small.csv')  
         schedule.init_POP()
         schedule.NXT_GEN() 
         start[i],end[i] = schedule.plot_sched()
@@ -48,12 +58,11 @@ def main():
     plt.xlabel('mutation rate')
     plt.ylabel('score')
     plt.show()
-    '''
 class GenAlg:
-    def __init__(self,K_max=1000,m=1000,mutation_rt=30):
+    def __init__(self,K_max=1000,m=1000,mutation_rt=30,data='spring_csv_data_small.csv'):
         self.K_max = K_max #max iteration
         self.POP_size = m
-        self.courses = load_dataset('spring_csv_data_small.csv')
+        self.courses = load_dataset(data)
         self.num_courses = len(self.courses[0])
         self.muts = mutation_rt
         '''
@@ -74,6 +83,7 @@ class GenAlg:
     def NXT_GEN(self):
         plt.figure()
         for k in range(self.K_max):
+            print(k)
             parents = self.selection()
             '''
             if k%10==0:
@@ -106,10 +116,12 @@ class GenAlg:
         plt.show()
     def obj(self,POP_single): #fix later
         score = 0
-        overlap = 150
-        early = 100
-        late = 75
-        lunch = 10
+        overlap = 50
+        early = 12
+        late = 7.5
+        lunch = 7.5
+        cant = 50
+        shouldnt = 25
         check = []
         for i in range(self.num_courses):
             if self.options[POP_single[i]][3]<930:
@@ -124,6 +136,18 @@ class GenAlg:
                     check.append(self.options[POP_single[i]][0][slot])
             if 1200 in range(self.options[POP_single[i]][3],self.options[POP_single[i]][4]):
                 score+=lunch
+            for ii in range(self.num_courses):
+                for slot in range(len(self.options[POP_single[i]][0])):
+                    check_2_set = set(self.options[POP_single[i]][0])
+                    if self.options[POP_single[i]][0][slot] in check_2_set:
+                        if ii+1>9:
+                            test = str(ii+1)
+                        else:
+                            test = '0'+str(ii+1)
+                        if test in self.courses[3][i]:
+                            score += cant
+                        if test in self.courses[4][i]:
+                            score += shouldnt
         return score
     def selection(self,last=0): 
         '''Truncation'''
@@ -160,11 +184,13 @@ class GenAlg:
                     child[pop][clss] = rnd_ass(self.courses[2][clss])[0]
         return child
     def plot_sched(self):
-        
         print('done')
         print(self.strt_score,self.fin_score)
-        print(self.POP[0])
-        
+        print('  ')
+        end_POP = copy.deepcopy(self.POP[0])
+        for i in range (len(end_POP)):
+            print(self.courses[1][i],self.options[end_POP[i]][2],
+                self.options[end_POP[i]][3],self.options[end_POP[i]][4])
         return self.strt_score,self.fin_score
 def rnd_ass(cls_len):
     if cls_len <= 50:
@@ -172,17 +198,19 @@ def rnd_ass(cls_len):
     elif cls_len <= 80:
         return randint.rvs(30,43,size = 1)
     elif cls_len <= 100:
-        return randint.rvs(44,63,size = 1)
+        return randint.rvs(44,75,size = 1)
     elif cls_len <= 110:
-        return randint.rvs(64,75,size = 1)
+        return randint.rvs(44,75,size = 1)
     elif cls_len <= 150:
-        return randint.rvs(76,85,size = 1)
+        return randint.rvs(76,92,size = 1)
     elif cls_len <= 160:
-        return randint.rvs(86,92,size = 1)
+        return randint.rvs(76,92,size = 1)
     elif cls_len <= 220:
         return randint.rvs(93,100,size = 1)
     elif cls_len <=240:
         return randint.rvs(93,100,size = 1)
+    elif cls_len <=340:
+        return randint.rvs(101,104,size = 1)
     else:
         print('error,',cls_len,'min not accounted for')
         return randint.rvs(1000,1001,size = 1)
@@ -196,24 +224,28 @@ def load_dataset(csv_path):
         reader = csv.DictReader(csv_fh)
         for row in reader:
             file_rows.append(row)
-
     dept = []
     name = []
     length = []
     cant = []
     shouldnt = []
     numb = []
-
     for i in range(len(file_rows)):
         dept.append(file_rows[i]['dept'])
         name.append(file_rows[i]['courseNumber'])
         length.append(int(file_rows[i]['timeMinPweek']))
-        cant.append(file_rows[i]['cantOverlap'])
-        shouldnt.append(file_rows[i]['shouldntOverlap'])
-        numb.append(file_rows[i]['dataNumber'])
-
+        if file_rows[i]['cantOverlap'] == '':
+            cant.append('0')
+        else:
+            cant.append((file_rows[i]['cantOverlap']))
+        if file_rows[i]['shouldntOverlap'] == '':
+            shouldnt.append('0')
+        else:
+            shouldnt.append((file_rows[i]['shouldntOverlap']))    
+        numb.append(int(file_rows[i]['dataNumber']))
     Course_List = [dept,name,length,cant,shouldnt,numb]
     return Course_List
 
 if __name__ == '__main__':
-    main()
+    #Optimize_Small()
+    Optimize_Large()
