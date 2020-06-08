@@ -177,11 +177,15 @@ def penalty(t_var):
 	# Use the idea that each class is slightly "attracted to" a random "good" time.
 	# That should spread them out.
 	# While we're at it, don't "attract" courses to lunchtime spots.
-	BEST_1_5_SPOTS = [1,2,4,5]*((J+3)//4)
+	BEST_1_5_SPOTS = [1,2,4,5,6]*((J+4)//5)
 	BEST_1_0_SPOTS = [2,3,4,6,7,8]*((J+5)//6)
-
+	
 	cluster_penalty = 0.0
 	for j in range(J):
+		
+		#fri_class_p += d_var[j,-1]
+		#mon_class_p +=cvx.sum( d_var[j,0:-1])
+
 		if 1.5 == class_block_types[j]:
 			cluster_penalty += cvx.abs(t_var[j] - np.random.choice(BEST_1_5_SPOTS, replace=False))
 		else:
@@ -193,11 +197,11 @@ def penalty(t_var):
 	AVG_MEETINGS_PER_DAY = np.sum(class_day_types)/D
 	# spread in days
 	day_spread = 0
-	for d in range(D):
-		day_spread += cvx.pos(cvx.sum(d_var[:,d]) - AVG_MEETINGS_PER_DAY)
+	for d in range(0,D):
+		day_spread += cvx.abs(cvx.sum(d_var[:,d]) - AVG_MEETINGS_PER_DAY)
 
 	# ADJUST RELATIVE WEIGHTS HERE
-	return 1 * time_p + 10 * overlap_p + day_spread*1 + cluster_penalty*2.0
+	return 2*time_p + 10 * overlap_p + day_spread*1 + cluster_penalty*1
 
 # Set objective
 objective = cvx.Minimize(penalty(t_var))
