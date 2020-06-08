@@ -93,7 +93,7 @@ if __name__ == "__main__":
 				if y < sample.check_desirable():
 					sample.x_best[:] = x
 
-				print(k*k_max+i, y)
+				#print(k*k_max+i, y)
 
 		return samples
 
@@ -140,7 +140,7 @@ if __name__ == "__main__":
 				#print("New value:", sample.check_desirable())
 
 
-			print(j, value)
+			#print(j, value)
 		
 		return samples
 
@@ -162,7 +162,7 @@ if __name__ == "__main__":
 
 
 	# Plot
-	'''
+	
 	x_plot = np.linspace(0, len(in_points),len(in_points))
 	plt.scatter(x_plot,in_points, label="Initial")
 	plt.scatter(x_plot,out_points, label="Final")
@@ -170,7 +170,7 @@ if __name__ == "__main__":
 	plt.ylabel("Penalty")
 	plt.xlabel("Sample number")
 	plt.savefig("Plot_{}.png".format(datetime.datetime.now()))
-	'''
+	
 	# Compare the best schedules
 	best_final_idx = np.argmin(out_points)
 	print("Best final schedule: penalty = ", out_points[best_final_idx])

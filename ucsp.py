@@ -322,7 +322,8 @@ class Ucsp:
 		# It really wants to put all the classes MW and this is a hack to fix it
 		spreading = daysCount[0] + daysCount[2]
 		
-		return softOverlapPenalty*10.0 + spreading*0.0+ oddHoursPenalty*2.0 + lunchHoursPenalty*1.0
+		# ADJUST THE PENALTY WEIGHTS HERE
+		return softOverlapPenalty*10.0 + spreading*1.0+ oddHoursPenalty*2.0 + lunchHoursPenalty*1.0
 
 
 	def get_all_time_vectors(self)->np.array:
