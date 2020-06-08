@@ -40,7 +40,7 @@ def parseJsonData(infile, outfile):
 		# (if timeisTBA is true, there will be 0 meetings of 0 length)
 		# and number enrolled
 		# This makes the header row
-		outfile.write("dept,courseNumber,courseType,numberOfMeetings,meetingLengthHours,numberEnrolled,cantOverlap,shouldntOverlap\r\n")
+		outfile.write("number,courseName,startTime,endTime,dayCode\r\n")
 		
 		rawData = json.load(infile)
 		for divisionName in rawData.keys(): # iterate over division (grad/undergrad etc)
@@ -59,7 +59,7 @@ def writeCourseToFile(course, outfile):
 	# Some courses have multiple sections
 	# and we will treat these as separate
 	# Some sections have multiple meetings # TODO handle these
-	
+	i=0
 	for section in course['sections']:
 		for meeting in section['meetings']:
 		
@@ -67,20 +67,20 @@ def writeCourseToFile(course, outfile):
 			timeHours = 0.0; numMeetings = 0
 			# If section is not TBA (there is a time and date associated with it)
 			if not meeting['timeIsTBA']:
-				# Count the hours per MEETING
-				timeHours = (meeting['endTime'] - meeting['startTime'] + 10)/60
+
 				# Count the DAYS per week this class meets
-				numMeetings = len(meeting['days'])
+				daysCode = [0,0,0,0,0]
+				for d in meeting['days']:
+					daysCode[d] = 1
+				daysCode = "".join([str(d) for d in daysCode])
 
 				# Write as a CSV string
-				outfile.write(",".join([
-					course['department'],
-					course['courseNumber'].rstrip(":"), # remove these stray :
-					section['courseType'],
-					str(numMeetings),
-					str(timeHours),
-					str(section['enrolled']),
-					"",""]) + "\r\n")
+				outfile.write(",".join([str(i),
+					course['courseNumber'].rstrip(":"),
+					str(int(2*(meeting['startTime']/60 - 8))),
+					str(int(2*((meeting['endTime']+10)/60- 8))), # add passing period
+					daysCode]) + "\r\n")
+				i += 1
 
 
 if __name__ == "__main__":
