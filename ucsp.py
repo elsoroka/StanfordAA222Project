@@ -181,9 +181,9 @@ This won't push the course time outside the allowable range.
 				self.td[2:] = np.zeros(5, dtype=int)
 				self.td[2+np.random.choice(range(0,5))] = 1
 			if n_days == 2:
-				choices = np.array([[1,0,1,0,0],
+				choices = np.array([[1,0,1,0,0],[0,1,0,1,0],
 					      [0,1,0,1,0], [0,0,1,0,1]], dtype=int)
-				self.td[2:] = choices[np.random.choice(range(0,3))]
+				self.td[2:] = choices[np.random.choice(range(0,4))]
 			
 
 	def make_feasible(self, schedule):
@@ -263,7 +263,9 @@ To conflict means otherCourse has at least overlapping day AND time.
 # and to perturb the courses in the hopes of making an infeasible Schedule feasible.
 class Ucsp:
 	# Define what counts as non-business hours.
-	ODD_HOURS_INDICES = [8, 9, 10, 16, 17]
+	ODD_HOURS_INDICES = [8, 9, 10, 17]
+	LUNCH_HOUR_1_0    = 3
+	LUNCH_HOUR_1_5    = 13
 
 	def __init__(self, schedule:[Course]):
 		'''Initialize a new problem'''
@@ -299,6 +301,8 @@ class Ucsp:
 		'''Compute a measure of schedule goodness: count soft constraints met.'''
 		softOverlapPenalty = 0.0
 		oddHoursPenalty    = 0.0
+		lunchHoursPenalty  = 0.0
+		daysCount = np.zeros(5)
 
 		for course in self.schedule:
 			# Check for odd (non-business) hours
@@ -308,8 +312,17 @@ class Ucsp:
 			for idx in course.shouldntOverlap:
 				if course.check_conflict(self.schedule[idx]):
 					softOverlapPenalty += 1.0
+			# Penalize courses at lunchtime
+			if course.td[0] == self.LUNCH_HOUR_1_0 or course.td[0] == self.LUNCH_HOUR_1_5:
+				lunchHoursPenalty += 1.0
 
-		return softOverlapPenalty*10.0 + oddHoursPenalty*1.0
+			daysCount += course.td[2:]
+
+
+		# It really wants to put all the classes MW and this is a hack to fix it
+		spreading = daysCount[0] + daysCount[2]
+		
+		return softOverlapPenalty*10.0 + spreading*0.0+ oddHoursPenalty*2.0 + lunchHoursPenalty*1.0
 
 
 	def get_all_time_vectors(self)->np.array:
@@ -360,14 +373,3 @@ if __name__ == "__main__":
 	for course in random_schedule:
 		print(course.courseName, course)
 
-	'''print("\nConflict test")
-			# make a deliberately conflict")ing set to test
-	conflict_schedule = dict()
-	conflict_schedule["AA279B"] = Course(np.array([0,0], dtype=int), np.array([0,1,0,1,0], dtype=int), "LEC", 20, "AA279D", "")
-	conflict_schedule["AA279D"] = Course(np.array([11,11], dtype=int), np.array([0,1,0,1,0], dtype=int), "LEC", 20, "AA279B", "")
-	print(conflict_schedule["AA279B"])
-	print(conflict_schedule["AA279D"])
-	conflict_schedule["AA279B"].make_feasible(conflict_schedule)
-	print(conflict_schedule["AA279B"])
-	print(conflict_schedule["AA279D"])
-	'''

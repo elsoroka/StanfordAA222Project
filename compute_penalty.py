@@ -44,27 +44,38 @@ if __name__ == "__main__":
 		for other_idx in hard_group:
 
 			# A course overlapping itself doesn't count
-			if check_overlap(rows[i], rows[other_idx]):
-				print("ERROR: ", rows[i], " conflicts with ", rows[other_idx])
+			if i != other_idx and check_overlap(rows[i], rows[other_idx]):
+				#print("ERROR: ", rows[i], " conflicts with ", rows[other_idx])
 				violation_count += 1
 
 		# Check the soft overlap groups
 		for other_idx in soft_group:
-			if check_overlap(rows[i], rows[int(other_idx)]):
+			if i != other_idx and check_overlap(rows[i], rows[int(other_idx)]):
+				#print("WARNING: ", rows[i], " conflicts with ", rows[other_idx])
 				overlap_count += 1
 
-	print("Hard group violations:", violation_count)
+	# doesn't really work
+	#print("Hard group violations:", violation_count)
 	print("Soft group overlaps  :", overlap_count)
 
 
 
 	# Check all the courses for outside business hours violations
 	odd_hours_count = 0
+	lunch_count = 0 # and classes during lunch break
 	for j in range(len(rows)):
+		#print(rows[j]['courseName'], int(rows[j]['startTime']), int(rows[j]['endTime']))
 	 	# 2 = our index for 9am, business hours, 18 = our index for 5pm
 		if int(rows[j]['startTime']) < 2 or int(rows[j]['endTime']) > 18:
 			odd_hours_count += 1
+			
+		if int(rows[j]['startTime']) == 10 or int(rows[j]['endTime']) == 11:
+			
+			lunch_count += 1
+
 	print("Odd hours:", odd_hours_count)
+	print("Lunchtime:", lunch_count)
+
 
 
 	# Responsibly close our files

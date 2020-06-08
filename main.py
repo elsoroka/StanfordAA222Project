@@ -11,6 +11,7 @@ import csv
 import copy
 import numpy as np
 import matplotlib.pyplot as plt
+import datetime
 
 if __name__ == "__main__":
 	print("Initializing some random schedules:")
@@ -50,9 +51,6 @@ if __name__ == "__main__":
 	# Compare the best schedules
 	best_init_idx = np.argmin(in_points)
 	print("Best initial (random) schedule: penalty = ", in_points[best_init_idx])
-	print(samples[best_init_idx].schedule)
-	for course in samples[best_init_idx].schedule:
-		print(course.courseName, course)
 
 
 	# Define iteration phase
@@ -61,12 +59,12 @@ if __name__ == "__main__":
 		x_best = np.zeros(N_SAMPLES*2)
 		y_best = np.Inf
 		for sample in samples:
-			print("Random schedule is feasible?", sample.check_feasible())
+			#print("Random schedule is feasible?", sample.check_feasible())
 			penalty =sample.check_desirable()
 			if penalty < y_best:
 				y_best = penalty
 				x_best = sample.get_all_time_vectors()
-			print("Random schedule is good? Penalty:", penalty)
+			#print("Random schedule is good? Penalty:", penalty)
 			sample.v = np.ones(len(sample.schedule), dtype=int)
 			sample.x_best = sample.get_all_time_vectors()
 			#for name in sample.schedule.keys():
@@ -76,7 +74,7 @@ if __name__ == "__main__":
 		# Iterate
 		n = len(samples[0].schedule)
 		for k in range(0, k_max):
-			for sample in samples:
+			for i, sample in enumerate(samples):
 				x = sample.get_all_time_vectors()
 				r1, r2 = np.random.randint(0,4,n, dtype=int), \
 				         np.random.randint(0,4,n, dtype=int)
@@ -95,6 +93,8 @@ if __name__ == "__main__":
 				if y < sample.check_desirable():
 					sample.x_best[:] = x
 
+				print(k*k_max+i, y)
+
 		return samples
 
 
@@ -102,7 +102,7 @@ if __name__ == "__main__":
 	# Define local search phase
 	def local_search_phase(samples):
 		# OK we're done with particles flying around
-		for sample in samples:
+		for j, sample in enumerate(samples):
 
 			# Let's try to see if there's any local improvements
 			x = sample.get_all_time_vectors()
@@ -139,13 +139,17 @@ if __name__ == "__main__":
 				delta_x[i] = 0
 				#print("New value:", sample.check_desirable())
 
+
+			print(j, value)
+		
 		return samples
+
 
 	for i in range(10):
 		samples = iteration_phase(samples, 10)
 		samples = local_search_phase(samples)
-
-
+		
+	
 
 	print("\nFinal:")
 
@@ -158,16 +162,18 @@ if __name__ == "__main__":
 
 
 	# Plot
+	'''
 	x_plot = np.linspace(0, len(in_points),len(in_points))
 	plt.scatter(x_plot,in_points, label="Initial")
 	plt.scatter(x_plot,out_points, label="Final")
 	plt.legend()
 	plt.ylabel("Penalty")
 	plt.xlabel("Sample number")
-	plt.show()
-
+	plt.savefig("Plot_{}.png".format(datetime.datetime.now()))
+	'''
 	# Compare the best schedules
 	best_final_idx = np.argmin(out_points)
 	print("Best final schedule: penalty = ", out_points[best_final_idx])
 	for course in samples[best_final_idx].schedule:
-		print(course.courseName, course)
+		print(course)
+
