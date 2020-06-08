@@ -1,0 +1,11 @@
+This file lists exceptions found and removed from the spring dataset.
+
+CME 251: Listed as 3:00 pm - 4:30 am, obviously an error.
+
+BIOE 459: Listed as 4:00 pm - 5:00 pm, without the 10 minute passing period. Class length set to 1 hour.
+
+CEE 273B: 4:15 pm - 6:15 pm on explorecourses, which does not fit any established pattern. Class length set to 2 hours.
+
+ENGR 203, ENGR 102, and ME 110: Listings are nonstandard times, including 6:00 pm - 9:30 pm and 6:30 pm -10:00 pm. Class length set to 2.5 hours.
+
+CME 100: Listed as 9:30 AM - 11:30 PM, obviously intended to be 11:30 AM. Class length set to 2 hours.
